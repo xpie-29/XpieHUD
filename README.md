@@ -1,2 +1,80 @@
 # XpieHUD
-Addon to fine tune my personal WoW UI and Addon setup
+
+A lightweight World of Warcraft addon for personal HUD management. Built for Retail (The War Within / 11.x).
+
+## Features
+
+### General Visibility
+- **Hide Status Bars** — hide the primary and secondary Blizzard XP/rep tracking bars
+- **Hide Micro Menu** — hide the Blizzard micro menu cluster
+- **Hide Bag Bar** — hide the Blizzard bag buttons (keybindings unaffected)
+- **Extra Abilities Size** — scale the Extra Action Button and Zone Ability frame independently
+
+### RestedXP Integration
+- **Hide Active Targets** — hide the RestedXP Active Targets panel
+- **Hide Active Items** — hide the RestedXP Active Items / spells panel
+- **Strip Borders** — remove all border and edge textures from RestedXP frames (works on all themes including Dark Mode)
+- **RestedXP Opacity** — set overall transparency for all RestedXP frames
+
+### Chat / Meter Toggle
+Three-state visibility cycle for the chat window and native Blizzard damage meter:
+- **State 0** — Chat visible, Meter hidden
+- **State 1** — Chat hidden, Meter visible  
+- **State 2** — Chat hidden, Meter hidden
+
+Includes a small movable on-screen button (left-click to cycle, right-drag to reposition).
+
+### Key Bindings
+- **Toggle Chat** — bindable in the standard Key Bindings UI under "XpieHUD"
+- **Toggle Minimap** — bindable in the standard Key Bindings UI under "XpieHUD"
+
+---
+
+## Slash Commands
+
+| Command | Description |
+|---|---|
+| `/xhud` or `/xpiehud` | Open settings panel |
+| `/xhud chat` | Toggle chat visibility |
+| `/xhud minimap` | Toggle minimap visibility |
+| `/xhud meter` | Cycle to next chat/meter state |
+| `/xhud meter 0\|1\|2` | Jump to specific state |
+| `/xhud button` | Show/hide the on-screen toggle button |
+| `/xhud meterframe` | Scan for the native damage meter frame global |
+| `/xhud meterframe <name>` | Set meter frame name manually (saved across sessions) |
+| `/xhud showall` | Restore all hidden elements |
+| `/xhud reset` | Reset all settings to defaults (confirm twice) |
+
+---
+
+## Installation
+
+1. Download the latest release zip
+2. Extract the `XpieHUD` folder into your `World of Warcraft/_retail_/Interface/AddOns/` directory
+3. Reload the UI or restart WoW
+
+## Requirements
+
+- World of Warcraft Retail (The War Within, Interface 120100+)
+- Optional: RestedXP Guides addon for the RestedXP features
+
+## Notes
+
+- The native damage meter frame name varies by patch. If the meter toggle doesn't work, run `/xhud meterframe` to scan for it, then set it with `/xhud meterframe <name>`. This is saved permanently.
+- RestedXP border stripping works on all themes (Custom, Dark Mode, etc.) and survives theme switches.
+- The chat/meter toggle button position is saved across sessions.
+
+## Version History
+
+- **1.0.9** — Removed quest tracker width (protected frame limitations in TWW)
+- **1.0.8** — Quest tracker width attempt via sub-tracker frames
+- **1.0.7** — Quest tracker width auto-detects live value on login
+- **1.0.6** — Quest tracker width targets correct content frames
+- **1.0.5** — Meter frame OnShow hook prevents data-driven re-shows
+- **1.0.4** — Quest tracker width slider (Settings panel)
+- **1.0.3** — Meter frame scanner and manual name persistence via `/xhud meterframe`
+- **1.0.2** — Chat/meter toggle redesign; frame-based click detection; correct chat routing
+- **1.0.1** — Settings panel scroll frame
+- **1.0.0** — Chat/Meter 3-state toggle with movable button
+- **0.9.x** — RestedXP border strip; Active Targets/Items hide; Bindings.xml modernisation
+- **0.2.0** — Initial release: chat/minimap toggle, status bar/micro menu/bag bar hide, extra abilities scale

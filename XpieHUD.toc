@@ -1,0 +1,14 @@
+## Interface: 120100
+## Title: XpieHUD
+## Notes: Lightweight visibility controls for the default Retail HUD.
+## Author: Jeremy / Xpie
+## Version: 1.0.9
+## SavedVariables: XpieHUDDB
+## Category-enUS: User Interface
+
+Core.lua
+Visibility.lua
+RestedXP.lua
+ChatMeterToggle.lua
+Settings.lua
+Bindings.xml

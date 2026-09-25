@@ -1,0 +1,297 @@
+local _, addon = ...
+
+local controls = {}
+
+local options = {
+    { key = "hideStatusBar1", label = "Hide Status Bar 1", description = "Hide the primary Blizzard status-tracking bar." },
+    { key = "hideStatusBar2", label = "Hide Status Bar 2", description = "Hide the secondary Blizzard status-tracking bar." },
+    { key = "hideMicroMenu",  label = "Hide Micro Menu",   description = "Hide the Blizzard micro menu cluster." },
+    { key = "hideBagBar",     label = "Hide Bag Bar",      description = "Hide the Blizzard bag buttons without changing bags or bindings." },
+}
+
+local rxpPanelOptions = {
+    { key = "hideRXPTargets", label = "Hide Active Targets", description = "Hide the RestedXP Active Targets panel." },
+    { key = "hideRXPItems",   label = "Hide Active Items",   description = "Hide the RestedXP Active Items / spells panel." },
+}
+
+-- ---------------------------------------------------------------------------
+-- Widget factories  (parent is always the scroll child)
+-- ---------------------------------------------------------------------------
+local function CreateCheckbox(parent, option, y)
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    check:SetPoint("TOPLEFT", 20, y)
+    check:SetSize(26, 26)
+
+    local label = check:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("LEFT", check, "RIGHT", 5, 1)
+    label:SetText(option.label)
+
+    local description = check:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    description:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -2)
+    description:SetWidth(520)
+    description:SetJustifyH("LEFT")
+    description:SetText(option.description)
+
+    check:SetScript("OnClick", function(self)
+        addon:SetOption(option.key, self:GetChecked())
+    end)
+
+    controls[option.key] = check
+    return -52   -- height consumed
+end
+
+local function CreateSectionHeader(parent, text, y)
+    local header = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    header:SetPoint("TOPLEFT", 16, y)
+    header:SetText(text)
+    return -22
+end
+
+local function CreateNote(parent, text, y, width)
+    local note = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    note:SetPoint("TOPLEFT", 24, y)
+    note:SetWidth(width or 560)
+    note:SetJustifyH("LEFT")
+    note:SetText(text)
+    -- Measure actual height after setting text
+    note:SetHeight(0)  -- let it auto-size
+    return -36
+end
+
+local function CreateSlider(parent, cfg)
+    local label = parent:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 24, cfg.y)
+    label:SetText(cfg.label)
+
+    local description = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    description:SetPoint("TOPLEFT", label, "BOTTOMLEFT", 0, -4)
+    description:SetWidth(520)
+    description:SetJustifyH("LEFT")
+    description:SetText(cfg.description)
+
+    local slider = CreateFrame("Slider", nil, parent, "OptionsSliderTemplate")
+    slider:SetPoint("TOPLEFT", description, "BOTTOMLEFT", 4, -18)
+    slider:SetWidth(260)
+    slider:SetMinMaxValues(cfg.min, cfg.max)
+    slider:SetValueStep(cfg.step)
+    slider:SetObeyStepOnDrag(true)
+
+    if slider.Low  then slider.Low:SetText(string.format(cfg.format, cfg.min))   end
+    if slider.High then slider.High:SetText(string.format(cfg.format, cfg.max))  end
+    if slider.Text then slider.Text:SetText("") end
+
+    local valueText = parent:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    valueText:SetPoint("LEFT", slider, "RIGHT", 14, 0)
+    slider.valueText = valueText
+
+    slider:SetScript("OnValueChanged", function(self, value)
+        value = math.floor((value / cfg.step) + 0.5) * cfg.step
+        self.valueText:SetFormattedText(cfg.format, value)
+        if not addon.refreshingSettings and XpieHUDDB[cfg.key] ~= value then
+            addon:SetOption(cfg.key, value)
+        end
+    end)
+
+    controls[cfg.key] = slider
+end
+
+-- ---------------------------------------------------------------------------
+-- Settings panel with scroll frame
+-- ---------------------------------------------------------------------------
+function addon:CreateSettings()
+    if self.settingsPanel then return end
+
+    -- Outer panel registered with Blizzard
+    local panel = CreateFrame("Frame")
+    panel.name  = "XpieHUD"
+    self.settingsPanel = panel
+
+    -- ScrollFrame fills the panel
+    local sf = CreateFrame("ScrollFrame", nil, panel, "UIPanelScrollFrameTemplate")
+    sf:SetPoint("TOPLEFT",     panel, "TOPLEFT",      4, -4)
+    sf:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", -26, 4)
+
+    -- Scroll child holds all actual content
+    local content = CreateFrame("Frame", nil, sf)
+    content:SetWidth(sf:GetWidth() or 580)
+    content:SetHeight(1)   -- will be updated after content is built
+    sf:SetScrollChild(content)
+
+    -- Update content width when panel resizes (e.g. first draw)
+    panel:SetScript("OnSizeChanged", function(self, w, h)
+        sf:SetWidth(w - 30)
+        content:SetWidth(w - 50)
+    end)
+
+    -- -----------------------------------------------------------------------
+    -- Title block (inside scroll child)
+    -- -----------------------------------------------------------------------
+    local title = content:CreateFontString(nil, "ARTWORK", "GameFontNormalLarge")
+    title:SetPoint("TOPLEFT", 16, -16)
+    title:SetText("XpieHUD")
+
+    local subtitle = content:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+    subtitle:SetPoint("TOPLEFT", title, "BOTTOMLEFT", 0, -8)
+    subtitle:SetWidth(560)
+    subtitle:SetJustifyH("LEFT")
+    subtitle:SetText("Lightweight visibility controls for the default Retail HUD.")
+
+    local note = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    note:SetPoint("TOPLEFT", subtitle, "BOTTOMLEFT", 0, -8)
+    note:SetWidth(560)
+    note:SetJustifyH("LEFT")
+    note:SetText("Toggle Chat or Minimap from Key Bindings, or with /xpiehud chat and /xpiehud minimap.")
+
+    -- -----------------------------------------------------------------------
+    -- Content — track y as we go
+    -- -----------------------------------------------------------------------
+    local y = -88
+
+    -- General checkboxes
+    for _, option in ipairs(options) do
+        CreateCheckbox(content, option, y)
+        y = y - 52
+    end
+
+    y = y - 8
+
+    -- Extra Abilities slider
+    CreateSlider(content, {
+        key = "extraAbilityScale", label = "Extra Abilities Size",
+        description = "Scale the Extra Action Button and Zone Ability element independently of the rest of the UI.",
+        min = 40, max = 100, step = 5, format = "%d%%", y = y,
+    })
+    y = y - 82
+
+    -- -----------------------------------------------------------------------
+    -- RestedXP section
+    -- -----------------------------------------------------------------------
+    local rxpHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    rxpHead:SetPoint("TOPLEFT", 16, y)
+    rxpHead:SetText("|cff70d5ffRestedXP|r")
+    y = y - 22
+
+    for _, option in ipairs(rxpPanelOptions) do
+        CreateCheckbox(content, option, y)
+        y = y - 52
+    end
+
+    local rxpNote = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    rxpNote:SetPoint("TOPLEFT", 24, y)
+    rxpNote:SetWidth(560)
+    rxpNote:SetJustifyH("LEFT")
+    rxpNote:SetText("Enable \"Strip Borders\" to remove frame edges. Use RXP's Background alpha=0 to clear fills. Adjust Opacity to taste.")
+    y = y - 30
+
+    -- Strip Borders checkbox (inline, not from table)
+    local rxpBorderCheck = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    rxpBorderCheck:SetPoint("TOPLEFT", 20, y)
+    rxpBorderCheck:SetSize(26, 26)
+    local rbl = rxpBorderCheck:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    rbl:SetPoint("LEFT", rxpBorderCheck, "RIGHT", 5, 1)
+    rbl:SetText("Strip Borders")
+    local rbd = rxpBorderCheck:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    rbd:SetPoint("TOPLEFT", rbl, "BOTTOMLEFT", 0, -2)
+    rbd:SetWidth(520)
+    rbd:SetJustifyH("LEFT")
+    rbd:SetText("Hide border and edge textures on RestedXP frames (reload UI to fully reset if toggled off).")
+    rxpBorderCheck:SetScript("OnClick", function(self)
+        addon:SetOption("rxpHideBorders", self:GetChecked())
+    end)
+    controls["rxpHideBorders"] = rxpBorderCheck
+    y = y - 52
+
+    CreateSlider(content, {
+        key = "rxpFrameAlpha", label = "RestedXP Opacity",
+        description = "Set transparency for all RestedXP frames (guide window, arrow, item frame).",
+        min = 0, max = 100, step = 5, format = "%d%%", y = y,
+    })
+    y = y - 82
+
+    -- -----------------------------------------------------------------------
+    -- Chat / Meter Toggle section
+    -- -----------------------------------------------------------------------
+    local cmHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    cmHead:SetPoint("TOPLEFT", 16, y)
+    cmHead:SetText("|cff70d5ffChat / Meter Toggle|r")
+    y = y - 22
+
+    local cmNote = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    cmNote:SetPoint("TOPLEFT", 24, y)
+    cmNote:SetWidth(560)
+    cmNote:SetJustifyH("LEFT")
+    cmNote:SetText("Cycles chat and native damage meter visibility. /xhud meter [0|1|2] or left-click the on-screen button. Right-drag to reposition.")
+    y = y - 30
+
+    local cmCheck = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+    cmCheck:SetPoint("TOPLEFT", 20, y)
+    cmCheck:SetSize(26, 26)
+    local cml = cmCheck:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    cml:SetPoint("LEFT", cmCheck, "RIGHT", 5, 1)
+    cml:SetText("Hide Toggle Button")
+    local cmd = cmCheck:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    cmd:SetPoint("TOPLEFT", cml, "BOTTOMLEFT", 0, -2)
+    cmd:SetWidth(520)
+    cmd:SetJustifyH("LEFT")
+    cmd:SetText("Hide the on-screen chat/meter toggle button (still usable via /xhud meter).")
+    cmCheck:SetScript("OnClick", function(self)
+        addon:SetOption("hideChatMeterButton", self:GetChecked())
+        if addon.chatMeterButton then
+            if self:GetChecked() then addon.chatMeterButton:Hide()
+            else addon.chatMeterButton:Show() end
+        end
+    end)
+    controls["hideChatMeterButton"] = cmCheck
+    y = y - 52
+
+    -- Pad the bottom so the last item isn't flush against the scroll edge
+    y = y - 20
+
+    -- Set scroll child height to fit all content
+    content:SetHeight(math.abs(y) + 20)
+
+    panel:SetScript("OnShow", function()
+        addon:RefreshSettings()
+    end)
+
+    if Settings and Settings.RegisterCanvasLayoutCategory and Settings.RegisterAddOnCategory then
+        local category = Settings.RegisterCanvasLayoutCategory(panel, "XpieHUD")
+        Settings.RegisterAddOnCategory(category)
+        self.settingsCategory = category
+    elseif InterfaceOptions_AddCategory then
+        InterfaceOptions_AddCategory(panel)
+    end
+end
+
+function addon:RefreshSettings()
+    if not XpieHUDDB then return end
+    self.refreshingSettings = true
+    for _, option in ipairs(options) do
+        controls[option.key]:SetChecked(XpieHUDDB[option.key])
+    end
+    controls.extraAbilityScale:SetValue(XpieHUDDB.extraAbilityScale or self.defaults.extraAbilityScale)
+    controls.rxpFrameAlpha:SetValue(XpieHUDDB.rxpFrameAlpha or self.defaults.rxpFrameAlpha)
+    if controls["rxpHideBorders"] then
+        controls["rxpHideBorders"]:SetChecked(XpieHUDDB.rxpHideBorders)
+    end
+    if controls["hideChatMeterButton"] then
+        controls["hideChatMeterButton"]:SetChecked(XpieHUDDB.hideChatMeterButton)
+    end
+    for _, option in ipairs(rxpPanelOptions) do
+        if controls[option.key] then
+            controls[option.key]:SetChecked(XpieHUDDB[option.key])
+        end
+    end
+    self.refreshingSettings = nil
+end
+
+function addon:OpenSettings()
+    if self.settingsCategory and Settings and Settings.OpenToCategory then
+        Settings.OpenToCategory(self.settingsCategory:GetID())
+    elseif self.settingsPanel and InterfaceOptionsFrame_OpenToCategory then
+        InterfaceOptionsFrame_OpenToCategory(self.settingsPanel)
+        InterfaceOptionsFrame_OpenToCategory(self.settingsPanel)
+    else
+        self:Print("Settings are not available yet. Try again after entering the world.")
+    end
+end
