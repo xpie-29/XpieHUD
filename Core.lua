@@ -24,6 +24,7 @@ addon.defaults = {
     questDialogKeys     = true,   -- 1-9 / Space keyboard shortcuts
     questDialogBadges   = true,   -- number badges on pickable options
     questDialogHideUI   = true,   -- fade the rest of the UI while talking
+    questTooltipCursor  = true,   -- default-anchored tooltips follow the cursor while talking
     questHideActionBars = true,
     questHideUnitFrames = true,
     questHideTracker    = true,

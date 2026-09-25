@@ -16,9 +16,11 @@ local _, addon = ...
 local DIALOG_FRAME_NAMES = { "QuestFrame", "GossipFrame", "ItemTextFrame" }
 local RESTORE_DELAY  = 0.15  -- gossip -> quest swaps hide one frame before showing the next
 local BADGE_ICON_ALPHA = 0.3 -- option icon alpha under a number badge
-local HINT_GAP       = 6     -- gap between a Space/Esc hint and its button
-local HINT_Y         = 2     -- lift hints to line up with the button text
-local BADGE_Y        = 1.5   -- lift list badges to line up with the option text
+local HINT_GAP       = 5     -- gap between a Space/Esc hint and its button
+local HINT_Y         = -2    -- vertical nudge to line hints up with the button text (tuned in game)
+local BADGE_Y        = -1.5  -- vertical nudge to line option badges up with their text (tuned in game)
+local QUEST_BADGE_X  = -1    -- quest-icon number: offset from the icon's bottom-left corner
+local QUEST_BADGE_Y  = -1
 local MIN_SCALE, MAX_SCALE = 50, 150
 
 local dialogFrames = {}
@@ -138,12 +140,13 @@ local hideGroups = {
         return Collect({},
             MainActionBar, MultiBarBottomLeft, MultiBarBottomRight, MultiBarRight, MultiBarLeft,
             MultiBar5, MultiBar6, MultiBar7, StanceBar, PetActionBar, PossessActionBar,
-            MainMenuBarVehicleLeaveButton, MicroMenuContainer, MicroMenu, BagsBar,
+            MainMenuBarVehicleLeaveButton, MicroMenuContainer, MicroMenu, BagsBar, MicroButtonAndBagsBar,
             MainStatusTrackingBarContainer, SecondaryStatusTrackingBarContainer,
             ExtraAbilityContainer)
     end },
     { key = "questHideUnitFrames", frames = function()
-        return Collect({}, PlayerFrame, PetFrame, TargetFrame, FocusFrame, PartyFrame, TotemFrame)
+        return Collect({}, PlayerFrame, PetFrame, TargetFrame, FocusFrame, PartyFrame, TotemFrame,
+            PersonalResourceDisplayFrame)
     end },
     { key = "questHideTracker", frames = function()
         return Collect({}, ObjectiveTrackerFrame)
@@ -391,26 +394,42 @@ end
 -- ---------------------------------------------------------------------------
 -- Number badges
 -- ---------------------------------------------------------------------------
--- List badges sit ON the option icon (the icon is dimmed underneath): the
--- gossip/greeting lists clip anything left of the icon, and nudging Blizzard's
--- text over would break the scroll box's row-height measuring.
+-- Badges sit ON the icon: the gossip/greeting lists clip anything left of it,
+-- and nudging Blizzard's text over would break the scroll box's row heights.
+-- Three styles:
+--   "option": gossip options; icon dimmed, gold number centred on it
+--   "quest":  available/active quests; Blizzard's real icon (!, ?, daily,
+--             campaign, ...) at full alpha with a small outlined gold number
+--             on its bottom-left corner, so new vs turn-in stays readable
+--   "reward": reward choices; number in the item icon's top-left corner
 local badges = {}        -- [button] = FontString
 local dimmedIcons = {}   -- [texture] = true
 
-local function SetBadge(button, number, isReward)
+local BADGE_STYLES = {
+    option = { font = "GameFontNormal",         point = "CENTER",     x = 0,             y = BADGE_Y,       dim = true },
+    quest  = { font = "NumberFontNormalSmall",  point = "BOTTOMLEFT", x = QUEST_BADGE_X, y = QUEST_BADGE_Y, gold = true },
+    reward = { font = "NumberFontNormal",       point = "TOPLEFT",    x = 2,             y = -2 },
+}
+
+local function SetBadge(button, number, styleName)
+    local style = BADGE_STYLES[styleName]
     local icon = button.Icon
     local badge = badges[button]
     if not badge then
-        if isReward then
-            badge = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
-            badge:SetPoint("TOPLEFT", icon or button, "TOPLEFT", 2, -2)
-        else
-            badge = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")   -- quest-icon gold
-            badge:SetPoint("CENTER", icon or button, "CENTER", 0, BADGE_Y)
-        end
+        badge = button:CreateFontString(nil, "OVERLAY")
         badges[button] = badge
     end
-    if icon and not isReward then
+    -- Pooled buttons can change role between refreshes; re-style when needed.
+    if badge.xhudStyle ~= styleName then
+        badge.xhudStyle = styleName
+        badge:SetFontObject(style.font)
+        if style.gold then
+            badge:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+        end
+        badge:ClearAllPoints()
+        badge:SetPoint(style.point, icon or button, style.point, style.x, style.y)
+    end
+    if icon and style.dim then
         icon:SetAlpha(BADGE_ICON_ALPHA)
         dimmedIcons[icon] = true
     end
@@ -481,7 +500,9 @@ local function RefreshBadges()
         if scrollBox then
             scrollBox:ForEachFrame(function(frame, elementData)
                 if elementData and elementData.index and elementData.index <= 9 then
-                    SetBadge(frame, elementData.index)
+                    local isQuest = elementData.buttonType == GOSSIP_BUTTON_TYPE_AVAILABLE_QUEST
+                        or elementData.buttonType == GOSSIP_BUTTON_TYPE_ACTIVE_QUEST
+                    SetBadge(frame, elementData.index, isQuest and "quest" or "option")
                 end
             end)
         end
@@ -491,12 +512,12 @@ local function RefreshBadges()
         if QuestFrameGreetingPanel:IsShown() then
             for number, button in ipairs(GetGreetingButtons()) do
                 if number > 9 then break end
-                SetBadge(button, number)
+                SetBadge(button, number, "quest")   -- greeting lists are all quests
             end
         elseif QuestFrameRewardPanel:IsShown() then
             for number, button in ipairs(GetRewardChoiceButtons()) do
                 if number > 9 then break end
-                SetBadge(button, number, true)
+                SetBadge(button, number, "reward")
             end
         end
     end
@@ -595,6 +616,16 @@ function addon:InitQuestDialog()
     end
 
     CreateKeyFrame()
+
+    -- With the UI faded, tooltips at their usual corner feel detached; put
+    -- default-anchored tooltips (units, world objects) at the cursor instead.
+    hooksecurefunc("GameTooltip_SetDefaultAnchor", function(tooltip, parent)
+        if not (tooltip and tooltip.SetOwner) or tooltip:IsForbidden() then return end
+        if parent and parent.IsForbidden and parent:IsForbidden() then return end
+        if XpieHUDDB.questTooltipCursor and IsEnabled() and AnyDialogShown() then
+            tooltip:SetOwner(parent, "ANCHOR_CURSOR")
+        end
+    end)
 
     -- Typing mid-dialog: show chat while an edit box has focus, re-fade after.
     for i = 1, (NUM_CHAT_WINDOWS or 10) do
