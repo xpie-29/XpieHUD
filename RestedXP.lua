@@ -71,8 +71,8 @@ local CollectRXPFrames, StripAll, RestoreAll
 
 -- ---------------------------------------------------------------------------
 -- Per-frame backdrop hooks
--- Alpha for step box backdrops — slight dark tint to aid readability (0=none, 0.1=subtle)
-local STEP_FRAME_BG_ALPHA = 0.2
+-- Alpha for step box backdrops — dark tint to aid readability (0=none, 0.1=subtle, 0.3=current)
+local STEP_FRAME_BG_ALPHA = 0.3
 
 -- Returns true if frame is one of the active step display boxes
 local function IsStepFrame(f)
@@ -258,7 +258,7 @@ StripAll = function(frames)
             end
         )
     end
-    -- Apply 10% alpha directly to step frames (created lazily, not in frames list)
+    -- Apply the step-frame alpha directly to step frames (created lazily, not in frames list)
     ApplyStepFrameAlpha(STEP_FRAME_BG_ALPHA)
     HideResizeGrip(true)
 end
