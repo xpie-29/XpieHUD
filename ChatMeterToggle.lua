@@ -50,6 +50,7 @@ local function FindMeterFrame()
     end
     return nil, nil
 end
+addon.FindMeterFrame = FindMeterFrame   -- QuestDialog.lua fades the meter with the chat group
 
 local meterOnShowHooked = false
 

@@ -19,6 +19,20 @@ addon.defaults = {
     chatMeterState      = nil,    -- nil = feature unused; 0/1/2 = active state
     hideChatMeterButton = false,  -- hide the on-screen toggle button
     meterFrameName      = nil,    -- persisted meter frame global name
+    -- Quest / gossip window QoL (QuestDialog.lua)
+    questDialogEnabled  = true,   -- master switch
+    questDialogKeys     = true,   -- 1-9 / Space keyboard shortcuts
+    questDialogBadges   = true,   -- number badges on pickable options
+    questDialogHideUI   = true,   -- fade the rest of the UI while talking
+    questHideActionBars = true,
+    questHideUnitFrames = true,
+    questHideTracker    = true,
+    questHideChat       = true,
+    questHideMinimap    = true,
+    questHideRXP        = true,
+    questHideBuffs      = true,
+    questDialogScale    = 100,    -- 50–150 (%)
+    -- questDialogPoint = { x, y }: window centre in UIParent units; nil = Blizzard default
 }
 
 BINDING_HEADER_XPIEHUD             = "XpieHUD"
@@ -26,7 +40,7 @@ BINDING_NAME_XPIEHUD_TOGGLE_CHAT    = "Toggle Chat"
 BINDING_NAME_XPIEHUD_TOGGLE_MINIMAP = "Toggle Minimap"
 
 -- Global handler functions called by WoW's keybinding system when a key is pressed.
--- These replace the Bindings.xml <Binding> elements which are deprecated in 11.x.
+-- These replace the Bindings.xml <Binding> elements, whose name/header attributes are deprecated.
 function XPIEHUD_TOGGLE_CHAT()    XpieHUD:Toggle("chat")    end
 function XPIEHUD_TOGGLE_MINIMAP() XpieHUD:Toggle("minimap") end
 
@@ -71,7 +85,8 @@ end
 
 function addon:ShowAll()
     for key, value in pairs(self.defaults) do
-        if type(value) == "boolean" then
+        -- Only the persistent hide options; quest window settings are left alone.
+        if type(value) == "boolean" and (key:find("^hide") or key == "rxpHideBorders") then
             XpieHUDDB[key] = false
         end
     end
@@ -105,6 +120,8 @@ local function HandleSlashCommand(input)
     elseif command:sub(1, 11) == "meterframe" then
         local arg = strtrim(command:sub(12))
         addon:SetMeterFrameName(arg ~= "" and arg or nil)
+    elseif command == "questreset" then
+        addon:ResetQuestDialogPosition()
     elseif command == "reset" then
         local now = GetTime()
         if addon.resetPendingUntil and now <= addon.resetPendingUntil then
@@ -114,7 +131,7 @@ local function HandleSlashCommand(input)
             addon:Print("Type |cffffffff/xpiehud reset|r again within 15 seconds to confirm.")
         end
     else
-        addon:Print("Commands: /xpiehud, chat, minimap, meter [0|1|2], button, meterframe [name], showall, reset")
+        addon:Print("Commands: /xpiehud, chat, minimap, meter [0|1|2], button, meterframe [name], questreset, showall, reset")
     end
 end
 
@@ -141,6 +158,8 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         addon:ScheduleRXPInit()
         -- Create chat/meter toggle button and restore saved state
         addon:CreateChatMeterButton()
+        -- Quest window hooks go in after the login load window (see the map-taint note)
+        C_Timer.After(0, function() addon:InitQuestDialog() end)
         -- Blizzard_DamageMeter may load slightly after PLAYER_LOGIN
         C_Timer.After(1, function()
             -- Restore persisted meter frame name

@@ -1,6 +1,6 @@
 # XpieHUD
 
-A lightweight World of Warcraft addon for personal HUD management. Built for Retail (The War Within / 11.x).
+A lightweight World of Warcraft addon for personal HUD management. Built for Retail (Midnight / 12.x).
 
 ## Features
 
@@ -24,6 +24,17 @@ Three-state visibility cycle for the chat window and native Blizzard damage mete
 
 Includes a small movable on-screen button (left-click to cycle, right-drag to reposition).
 
+### Quest Window
+Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows. There's no reskin: the parchment and campaign themes stay exactly as Blizzard draws them.
+- **Hide UI While Talking**: fades action bars, unit frames, the objective tracker, chat and meter, the minimap, RestedXP frames and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
+- **Position and Size**: Shift+drag a window to move it. A size slider (50–150%) sits in settings. Both are saved and re-applied every time the window opens.
+- **Keyboard Shortcuts** (out of combat):
+  - **1–9** pick gossip options, quests in an NPC's list, and reward choices.
+  - **Space** accepts, continues, completes, or turns a book's page.
+  - **Esc** closes the window, as it always has.
+  - All other keys pass through, so movement and camera still work. PvP quests and quests that cost gold still need a click.
+- **Number Badges**: small numbers next to the options the keys select (can be turned off).
+
 ### Key Bindings
 - **Toggle Chat** — bindable in the standard Key Bindings UI under "XpieHUD"
 - **Toggle Minimap** — bindable in the standard Key Bindings UI under "XpieHUD"
@@ -42,6 +53,7 @@ Includes a small movable on-screen button (left-click to cycle, right-drag to re
 | `/xhud button` | Show/hide the on-screen toggle button |
 | `/xhud meterframe` | Scan for the native damage meter frame global |
 | `/xhud meterframe <name>` | Set meter frame name manually (saved across sessions) |
+| `/xhud questreset` | Reset quest window position and size |
 | `/xhud showall` | Restore all hidden elements |
 | `/xhud reset` | Reset all settings to defaults (confirm twice) |
 
@@ -55,7 +67,7 @@ Includes a small movable on-screen button (left-click to cycle, right-drag to re
 
 ## Requirements
 
-- World of Warcraft Retail (The War Within, Interface 120100+)
+- World of Warcraft Retail (Midnight, Interface 120100+)
 - Optional: RestedXP Guides addon for the RestedXP features
 
 ## Notes
@@ -63,8 +75,12 @@ Includes a small movable on-screen button (left-click to cycle, right-drag to re
 - The native damage meter frame name varies by patch. If the meter toggle doesn't work, run `/xhud meterframe` to scan for it, then set it with `/xhud meterframe <name>`. This is saved permanently.
 - RestedXP border stripping works on all themes (Custom, Dark Mode, etc.) and survives theme switches.
 - The chat/meter toggle button position is saved across sessions.
+- Quest window positioning: if another addon (e.g. Enhance QOL's Move module) also moves `QuestFrame`, `GossipFrame` or `ItemTextFrame`, turn it off there so the two don't fight.
+- `/xhud showall` only clears the persistent hide options; it doesn't touch the quest window settings.
 
 ## Version History
+
+- **1.1.0**: Native quest window QoL: hide UI while talking, saved position and size, 1–9/Space keys, number badges
 
 - **1.0.9** — Removed quest tracker width (protected frame limitations in TWW)
 - **1.0.8** — Quest tracker width attempt via sub-tracker frames

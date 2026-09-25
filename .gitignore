@@ -7,3 +7,6 @@ SavedVariables/
 
 # Archives
 *.zip
+
+# Claude code handoff
+CLAUDE.md

@@ -14,6 +14,24 @@ local rxpPanelOptions = {
     { key = "hideRXPItems",   label = "Hide Active Items",   description = "Hide the RestedXP Active Items / spells panel." },
 }
 
+local questOptions = {
+    { key = "questDialogEnabled", label = "Enable Quest Window Enhancements", description = "Master switch for everything in this section. Blizzard's quest and gossip windows themselves are never replaced." },
+    { key = "questDialogKeys",    label = "Keyboard Shortcuts",   description = "1–9 pick options, quests and rewards. Space accepts, continues or completes. Out of combat only; all other keys pass through." },
+    { key = "questDialogBadges",  label = "Number Badges",        description = "Show small numbers next to the options the 1–9 keys select." },
+    { key = "questDialogHideUI",  label = "Hide UI While Talking", description = "Fade the rest of the interface while a quest, gossip or book window is open. Restores on close or when combat starts." },
+}
+
+-- Compact two-column list: which parts of the UI fade while talking.
+local questHideOptions = {
+    { key = "questHideActionBars", label = "Action & Status Bars" },
+    { key = "questHideUnitFrames", label = "Unit Frames" },
+    { key = "questHideTracker",    label = "Objective Tracker" },
+    { key = "questHideChat",       label = "Chat & Meter" },
+    { key = "questHideMinimap",    label = "Minimap" },
+    { key = "questHideRXP",        label = "RestedXP" },
+    { key = "questHideBuffs",      label = "Buffs & Debuffs" },
+}
+
 -- ---------------------------------------------------------------------------
 -- Widget factories  (parent is always the scroll child)
 -- ---------------------------------------------------------------------------
@@ -244,6 +262,65 @@ function addon:CreateSettings()
     controls["hideChatMeterButton"] = cmCheck
     y = y - 52
 
+    -- -----------------------------------------------------------------------
+    -- Quest Window section
+    -- -----------------------------------------------------------------------
+    local qHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    qHead:SetPoint("TOPLEFT", 16, y)
+    qHead:SetText("|cff70d5ffQuest Window|r")
+    y = y - 22
+
+    local qNote = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    qNote:SetPoint("TOPLEFT", 24, y)
+    qNote:SetWidth(560)
+    qNote:SetJustifyH("LEFT")
+    qNote:SetText("Applies to the quest, gossip and book/plaque windows. Shift+drag a window to move it. /xhud questreset restores the default position and size.")
+    y = y - 30
+
+    for _, option in ipairs(questOptions) do
+        CreateCheckbox(content, option, y)
+        y = y - 52
+    end
+
+    local hideLabel = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    hideLabel:SetPoint("TOPLEFT", 48, y + 6)
+    hideLabel:SetText("Fade while talking:")
+    y = y - 14
+
+    for index, option in ipairs(questHideOptions) do
+        local column = (index - 1) % 2
+        local check = CreateFrame("CheckButton", nil, content, "UICheckButtonTemplate")
+        check:SetPoint("TOPLEFT", 44 + column * 220, y)
+        check:SetSize(24, 24)
+        local label = check:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
+        label:SetPoint("LEFT", check, "RIGHT", 4, 1)
+        label:SetText(option.label)
+        check:SetScript("OnClick", function(self)
+            addon:SetOption(option.key, self:GetChecked())
+        end)
+        controls[option.key] = check
+        if column == 1 or index == #questHideOptions then
+            y = y - 28
+        end
+    end
+    y = y - 12
+
+    CreateSlider(content, {
+        key = "questDialogScale", label = "Quest Window Size",
+        description = "Scale the quest, gossip and book windows. Takes effect immediately, including on an open window.",
+        min = 50, max = 150, step = 5, format = "%d%%", y = y,
+    })
+    y = y - 82
+
+    local resetButton = CreateFrame("Button", nil, content, "UIPanelButtonTemplate")
+    resetButton:SetPoint("TOPLEFT", 24, y)
+    resetButton:SetSize(180, 24)
+    resetButton:SetText("Reset Position & Size")
+    resetButton:SetScript("OnClick", function()
+        addon:ResetQuestDialogPosition()
+    end)
+    y = y - 34
+
     -- Pad the bottom so the last item isn't flush against the scroll edge
     y = y - 20
 
@@ -281,6 +358,16 @@ function addon:RefreshSettings()
         if controls[option.key] then
             controls[option.key]:SetChecked(XpieHUDDB[option.key])
         end
+    end
+    for _, list in ipairs({ questOptions, questHideOptions }) do
+        for _, option in ipairs(list) do
+            if controls[option.key] then
+                controls[option.key]:SetChecked(XpieHUDDB[option.key])
+            end
+        end
+    end
+    if controls.questDialogScale then
+        controls.questDialogScale:SetValue(XpieHUDDB.questDialogScale or self.defaults.questDialogScale)
     end
     self.refreshingSettings = nil
 end

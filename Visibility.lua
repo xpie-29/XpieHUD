@@ -164,6 +164,9 @@ function addon:ApplyAll(forceShow)
     end
     self:ApplyExtraAbilityScale()
     self:ApplyRXP()
+    if self.ApplyQuestDialog then
+        self:ApplyQuestDialog()
+    end
 end
 
 function addon:ApplyExtraAbilityScale()
