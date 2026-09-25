@@ -27,7 +27,7 @@ Includes a small movable on-screen button (left-click to cycle, right-drag to re
 ### Quest Window
 Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows. There's no reskin: the parchment and campaign themes stay exactly as Blizzard draws them.
 - **Hide UI While Talking**: fades action bars, unit frames, the objective tracker, chat and meter, the minimap, RestedXP frames and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
-  - Frames from other addons can be added by name: run `/xhud questscan` with a quest window open to list what's still visible, then `/xhud questhide <FrameName>`.
+  - Frames from other addons can be added by name: run `/xhud questscan`, talk to an NPC, and close the window to read what's still visible, then `/xhud questhide <FrameName>`.
 - **Position and Size**: drag a window's title bar to move it. A size slider (50–150%) sits in settings. Both are saved and re-applied every time the window opens.
 - **Keyboard Shortcuts** (out of combat):
   - **1–9** pick gossip options, quests in an NPC's list, and reward choices.
@@ -55,7 +55,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 | `/xhud meterframe` | Scan for the native damage meter frame global |
 | `/xhud meterframe <name>` | Set meter frame name manually (saved across sessions) |
 | `/xhud questreset` | Reset quest window position and size |
-| `/xhud questscan` | With a quest window open, list frames still visible |
+| `/xhud questscan` | List frames still visible during a quest window (arms for the next NPC if none is open) |
 | `/xhud questhide <name>` | Add/remove a frame (case-sensitive) from the fade list |
 | `/xhud showall` | Restore all hidden elements |
 | `/xhud reset` | Reset all settings to defaults (confirm twice) |
@@ -83,6 +83,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Version History
 
+- **1.1.2**: Gold number badges; badge and key-hint alignment; chat shows while typing mid-dialog; `questscan` arms itself for the next NPC and skips frames it cannot inspect
 - **1.1.1**: Title-bar drag handle; badges moved onto option icons; Space/Esc key hints; minimap fully hidden while talking; RXP arrow and chat/meter button fade; `questscan`/`questhide`; fixed `/xhud meterframe <name>` (was lowercased and mis-parsed)
 - **1.1.0**: Native quest window QoL: hide UI while talking, saved position and size, 1–9/Space keys, number badges
 

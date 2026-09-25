@@ -17,6 +17,8 @@ local DIALOG_FRAME_NAMES = { "QuestFrame", "GossipFrame", "ItemTextFrame" }
 local RESTORE_DELAY  = 0.15  -- gossip -> quest swaps hide one frame before showing the next
 local BADGE_ICON_ALPHA = 0.3 -- option icon alpha under a number badge
 local HINT_GAP       = 6     -- gap between a Space/Esc hint and its button
+local HINT_Y         = 2     -- lift hints to line up with the button text
+local BADGE_Y        = 1.5   -- lift list badges to line up with the option text
 local MIN_SCALE, MAX_SCALE = 50, 150
 
 local dialogFrames = {}
@@ -183,6 +185,7 @@ addon.questHideGroups = hideGroups
 
 local faded = {}   -- [frame] = alpha to restore
 local uiFaded = false
+local chatPeek = false   -- a chat edit box has focus: keep the chat group visible
 
 local function FadeFrame(frame)
     local current = frame:GetAlpha()
@@ -208,7 +211,7 @@ local function FadeUI()
     for _, frame in ipairs(dialogFrames) do isDialog[frame] = true end
 
     for _, group in ipairs(hideGroups) do
-        if XpieHUDDB[group.key] then
+        if XpieHUDDB[group.key] and not (chatPeek and group.key == "questHideChat") then
             for _, frame in ipairs(group.frames()) do
                 if not isDialog[frame] then
                     wanted[frame] = true
@@ -402,8 +405,8 @@ local function SetBadge(button, number, isReward)
             badge = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
             badge:SetPoint("TOPLEFT", icon or button, "TOPLEFT", 2, -2)
         else
-            badge = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-            badge:SetPoint("CENTER", icon or button, "CENTER", 0, 0)
+            badge = button:CreateFontString(nil, "OVERLAY", "GameFontNormal")   -- quest-icon gold
+            badge:SetPoint("CENTER", icon or button, "CENTER", 0, BADGE_Y)
         end
         badges[button] = badge
     end
@@ -449,9 +452,9 @@ local function RefreshKeyHints(show)
             if not hint and show then
                 hint = button:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
                 if isLeftButton then
-                    hint:SetPoint("LEFT", button, "RIGHT", HINT_GAP, 0)
+                    hint:SetPoint("LEFT", button, "RIGHT", HINT_GAP, HINT_Y)
                 else
-                    hint:SetPoint("RIGHT", button, "LEFT", -HINT_GAP, 0)
+                    hint:SetPoint("RIGHT", button, "LEFT", -HINT_GAP, HINT_Y)
                 end
                 hint:SetText(text)
                 keyHints[button] = hint
@@ -542,6 +545,12 @@ local function OnDialogShow(frame)
     ApplyPosition(frame)
     UpdateState()
     RefreshBadges()
+    if addon.questScanArmed then
+        addon.questScanArmed = nil
+        C_Timer.After(0.5, function()
+            if AnyDialogShown() then addon:ScanQuestVisibleFrames() end
+        end)
+    end
 end
 
 local function OnDialogHide()
@@ -586,6 +595,21 @@ function addon:InitQuestDialog()
     end
 
     CreateKeyFrame()
+
+    -- Typing mid-dialog: show chat while an edit box has focus, re-fade after.
+    for i = 1, (NUM_CHAT_WINDOWS or 10) do
+        local editBox = _G["ChatFrame" .. i .. "EditBox"]
+        if editBox then
+            editBox:HookScript("OnEditFocusGained", function()
+                chatPeek = true
+                if uiFaded then UpdateState() end
+            end)
+            editBox:HookScript("OnEditFocusLost", function()
+                chatPeek = false
+                if uiFaded then UpdateState() end
+            end)
+        end
+    end
     HookBadges()
     eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
@@ -641,34 +665,53 @@ function addon:ToggleQuestExtraFrame(name)
     UpdateState()
 end
 
--- /xhud questscan: with a quest/gossip window open, list what's still visible
--- on UIParent so stragglers from other addons can be added with questhide.
+-- /xhud questscan: list what's still visible on UIParent while a quest window
+-- is open, so stragglers from other addons can be added with questhide.
+-- Run it with no window open and it arms itself for the next NPC you talk to
+-- (no typing needed mid-dialog). Output lands in chat, readable after closing.
+local function DescribeChild(child)
+    if child:IsForbidden() or not child:IsVisible() or child:GetEffectiveAlpha() <= 0.05 then return end
+    local w, h = child:GetSize()
+    local left, top = child:GetLeft(), child:GetTop()
+    if not (w and h and left and top) or w * h < 400 then return end
+    local label = child:GetName()
+    if not label then
+        label = "<unnamed> " .. (child.GetDebugName and child:GetDebugName() or "?")
+    end
+    return { label = label, area = w * h,
+             text = string.format("  |cffffffff%s|r  %dx%d at (%d, %d)", label, w, h, left, top) }
+end
+
 function addon:ScanQuestVisibleFrames()
     if not AnyDialogShown() then
-        self:Print("Open a quest, gossip or book window first, then run /xhud questscan again (e.g. from a macro).")
+        self.questScanArmed = true
+        self:Print("Scan armed: talk to any NPC and the scan runs automatically. The results appear in chat once the window closes.")
         return
     end
-    local isDialog = {}
-    for _, frame in ipairs(dialogFrames) do isDialog[frame] = true end
-    if keyFrame then isDialog[keyFrame] = true end
+    self.questScanArmed = nil
 
-    local found = {}
+    local skip = {}
+    for _, frame in ipairs(dialogFrames) do skip[frame] = true end
+    if keyFrame then skip[keyFrame] = true end
+
+    local found, skipped = {}, 0
     for _, child in ipairs({ UIParent:GetChildren() }) do
-        if not isDialog[child] and not faded[child] and child:IsVisible()
-           and child:GetEffectiveAlpha() > 0.05 then
-            local w, h = child:GetSize()
-            local left, top = child:GetLeft(), child:GetTop()
-            if w and h and w * h >= 400 and left and top then
-                found[#found + 1] = { child = child, name = child:GetName(), w = w, h = h, left = left, top = top }
+        if not skip[child] and not faded[child] then
+            -- Some frames refuse inspection (forbidden / secret values); skip them.
+            local ok, entry = pcall(DescribeChild, child)
+            if ok and entry then
+                found[#found + 1] = entry
+            elseif not ok then
+                skipped = skipped + 1
             end
         end
     end
-    table.sort(found, function(a, b) return (a.w * a.h) > (b.w * b.h) end)
+    table.sort(found, function(a, b) return a.area > b.area end)
 
-    self:Print(#found .. " visible frame(s) on UIParent (largest first):")
+    self:Print(#found .. " visible frame(s) on UIParent, largest first" ..
+        (skipped > 0 and (" (" .. skipped .. " couldn't be inspected)") or "") .. ":")
     for index, entry in ipairs(found) do
         if index > 20 then break end
-        local label = entry.name or ("<unnamed> " .. (entry.child.GetDebugName and entry.child:GetDebugName() or "?"))
-        self:Print(string.format("  |cffffffff%s|r  %dx%d at (%d, %d)", label, entry.w, entry.h, entry.left, entry.top))
+        self:Print(entry.text)
     end
 end
