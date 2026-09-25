@@ -15,11 +15,13 @@ local _, addon = ...
 
 local DIALOG_FRAME_NAMES = { "QuestFrame", "GossipFrame", "ItemTextFrame" }
 local RESTORE_DELAY  = 0.15  -- gossip -> quest swaps hide one frame before showing the next
-local BADGE_GAP      = -2    -- gap between a list badge and its option icon
+local BADGE_ICON_ALPHA = 0.3 -- option icon alpha under a number badge
+local HINT_GAP       = 6     -- gap between a Space/Esc hint and its button
 local MIN_SCALE, MAX_SCALE = 50, 150
 
 local dialogFrames = {}
 local initialized = false
+local inCombat = false
 
 local function IsEnabled()
     return XpieHUDDB and XpieHUDDB.questDialogEnabled
@@ -80,13 +82,6 @@ end
 local function HookMovement(frame)
     frame:SetMovable(true)
 
-    frame:HookScript("OnMouseDown", function(self, button)
-        if button == "LeftButton" and IsShiftKeyDown() and IsEnabled() then
-            moving[self] = true
-            self:StartMoving()
-        end
-    end)
-
     local function StopMoving(self)
         if not moving[self] then return end
         self:StopMovingOrSizing()
@@ -95,7 +90,23 @@ local function HookMovement(frame)
         SavePosition(self)
         ApplyPosition(self)
     end
-    frame:HookScript("OnMouseUp", StopMoving)
+
+    -- Invisible drag handle over the title bar (between portrait and close
+    -- button). Clicks on the frame body land on Blizzard's scroll frames, so
+    -- a modifier-drag on the frame itself never fires.
+    local handle = CreateFrame("Frame", nil, frame)
+    handle:SetPoint("TOPLEFT", frame, "TOPLEFT", 60, 0)
+    handle:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -28, 0)
+    handle:SetHeight(22)
+    handle:SetFrameLevel(frame:GetFrameLevel() + 10)
+    handle:EnableMouse(true)
+    handle:RegisterForDrag("LeftButton")
+    handle:SetScript("OnDragStart", function()
+        if not IsEnabled() then return end
+        moving[frame] = true
+        frame:StartMoving()
+    end)
+    handle:SetScript("OnDragStop", function() StopMoving(frame) end)
     frame:HookScript("OnHide", StopMoving)
 
     -- Blizzard's panel manager calls SetPoint every time it lays out the left
@@ -113,7 +124,7 @@ end
 local function Collect(list, ...)
     for index = 1, select("#", ...) do
         local frame = select(index, ...)
-        if frame and frame.SetAlpha then
+        if type(frame) == "table" and frame.SetAlpha then
             list[#list + 1] = frame
         end
     end
@@ -138,7 +149,7 @@ local hideGroups = {
     { key = "questHideChat", frames = function()
         -- Edit boxes are left alone so typing mid-dialog stays visible.
         local list = Collect({}, GeneralDockManager, ChatFrameMenuButton, ChatFrameChannelButton,
-            QuickJoinToastButton, addon.FindMeterFrame and addon.FindMeterFrame())
+            QuickJoinToastButton, addon.chatMeterButton, addon.FindMeterFrame and addon.FindMeterFrame())
         for i = 1, (NUM_CHAT_WINDOWS or 10) do
             Collect(list, _G["ChatFrame" .. i], _G["ChatFrame" .. i .. "Tab"], _G["ChatFrame" .. i .. "ButtonFrame"])
         end
@@ -150,10 +161,22 @@ local hideGroups = {
     { key = "questHideRXP", frames = function()
         local rxp = _G["RXPGuides"]
         local arrow = rxp and rxp.enabledFrames and rxp.enabledFrames.arrowFrame
-        return Collect({}, _G["RXPFrame"], _G["RXPTargetFrame"], _G["RXPItemFrame"], arrow)
+        -- RXPG_ARROW: the waypoint arrow (map.lua). RXP only touches its alpha on
+        -- state changes, so a fade sticks.
+        return Collect({}, _G["RXPFrame"], _G["RXPTargetFrame"], _G["RXPItemFrame"], _G["RXPG_ARROW"], arrow)
     end },
     { key = "questHideBuffs", frames = function()
         return Collect({}, BuffFrame, DebuffFrame)
+    end },
+    -- Frames added by name with /xhud questhide <FrameName> (e.g. other addons' panels).
+    { key = "questDialogHideUI", frames = function()
+        local list = {}
+        if type(XpieHUDDB.questExtraFrames) == "table" then
+            for name in pairs(XpieHUDDB.questExtraFrames) do
+                Collect(list, _G[name])
+            end
+        end
+        return list
     end },
 }
 addon.questHideGroups = hideGroups
@@ -201,10 +224,38 @@ local function FadeUI()
     uiFaded = true
 end
 
+-- The minimap draws blips, quest areas and the player arrow outside normal
+-- alpha inheritance, so fading MinimapCluster leaves them floating. The
+-- Minimap itself isn't protected; Hide/Show it (only if we were the ones
+-- who hid it).
+local minimapHidden = false
+
+local function CanToggleMinimap()
+    return Minimap and not (InCombatLockdown() and Minimap:IsProtected())
+end
+
+local function HideMinimap()
+    if minimapHidden or not CanToggleMinimap() or not Minimap:IsShown() then return end
+    Minimap:Hide()
+    minimapHidden = true
+end
+
+local function ShowMinimap()
+    if not minimapHidden or not CanToggleMinimap() then return end
+    Minimap:Show()
+    minimapHidden = false
+end
+
+local function FadeUIAll()
+    FadeUI()
+    if XpieHUDDB.questHideMinimap then HideMinimap() else ShowMinimap() end
+end
+
 local function RestoreUI()
     for frame in pairs(faded) do
         RestoreFrame(frame)
     end
+    ShowMinimap()
     uiFaded = false
 end
 
@@ -337,27 +388,90 @@ end
 -- ---------------------------------------------------------------------------
 -- Number badges
 -- ---------------------------------------------------------------------------
-local badges = {}   -- [button] = FontString
+-- List badges sit ON the option icon (the icon is dimmed underneath): the
+-- gossip/greeting lists clip anything left of the icon, and nudging Blizzard's
+-- text over would break the scroll box's row-height measuring.
+local badges = {}        -- [button] = FontString
+local dimmedIcons = {}   -- [texture] = true
 
-local function SetBadge(button, number, onIcon)
+local function SetBadge(button, number, isReward)
+    local icon = button.Icon
     local badge = badges[button]
     if not badge then
-        badge = button:CreateFontString(nil, "OVERLAY", onIcon and "NumberFontNormal" or "GameFontNormalSmall")
-        local icon = button.Icon or button
-        if onIcon then
-            badge:SetPoint("TOPLEFT", icon, "TOPLEFT", 2, -2)
+        if isReward then
+            badge = button:CreateFontString(nil, "OVERLAY", "NumberFontNormal")
+            badge:SetPoint("TOPLEFT", icon or button, "TOPLEFT", 2, -2)
         else
-            badge:SetPoint("RIGHT", icon, "LEFT", BADGE_GAP, 0)
+            badge = button:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+            badge:SetPoint("CENTER", icon or button, "CENTER", 0, 0)
         end
         badges[button] = badge
+    end
+    if icon and not isReward then
+        icon:SetAlpha(BADGE_ICON_ALPHA)
+        dimmedIcons[icon] = true
     end
     badge:SetText(number)
     badge:Show()
 end
 
+-- Subtle key hints next to Blizzard's own bottom buttons. Space hints sit to
+-- the right of the left-hand button, Esc hints to the left of the right-hand one.
+local keyHints = {}   -- [button] = FontString
+
+local function GetHintButtons()
+    return {
+        { QuestFrameAcceptButton,        "Space", true },
+        { QuestFrameCompleteButton,      "Space", true },
+        { QuestFrameCompleteQuestButton, "Space", true },
+        { QuestFrameDeclineButton,         "Esc", false },
+        { QuestFrameGoodbyeButton,         "Esc", false },
+        { QuestFrameGreetingGoodbyeButton, "Esc", false },
+        { GossipFrame and GossipFrame.GreetingPanel and GossipFrame.GreetingPanel.GoodbyeButton, "Esc", false },
+    }
+end
+
+local function SpaceWouldAct()
+    if QuestFrameDetailPanel and QuestFrameDetailPanel:IsShown() then
+        return not QuestFlagsPVP()
+    elseif QuestFrameRewardPanel and QuestFrameRewardPanel:IsShown() then
+        local money = GetQuestMoneyToGet()
+        return not (money and money > 0)
+    end
+    return true
+end
+
+local function RefreshKeyHints(show)
+    for _, entry in ipairs(GetHintButtons()) do
+        local button, text, isLeftButton = entry[1], entry[2], entry[3]
+        if button then
+            local hint = keyHints[button]
+            if not hint and show then
+                hint = button:CreateFontString(nil, "OVERLAY", "GameFontDisableSmall")
+                if isLeftButton then
+                    hint:SetPoint("LEFT", button, "RIGHT", HINT_GAP, 0)
+                else
+                    hint:SetPoint("RIGHT", button, "LEFT", -HINT_GAP, 0)
+                end
+                hint:SetText(text)
+                keyHints[button] = hint
+            end
+            if hint then
+                hint:SetShown(show and (text ~= "Space" or SpaceWouldAct()))
+            end
+        end
+    end
+end
+
 local function RefreshBadges()
     for _, badge in pairs(badges) do badge:Hide() end
-    if not (IsEnabled() and XpieHUDDB.questDialogKeys and XpieHUDDB.questDialogBadges) then return end
+    for icon in pairs(dimmedIcons) do icon:SetAlpha(1) end
+    wipe(dimmedIcons)
+
+    local show = IsEnabled() and XpieHUDDB.questDialogKeys and XpieHUDDB.questDialogBadges
+        and not (inCombat or InCombatLockdown())
+    RefreshKeyHints(show)
+    if not show then return end
 
     if GossipFrame and GossipFrame:IsShown() then
         local scrollBox = GetGossipScrollBox()
@@ -409,16 +523,16 @@ local restoreToken = 0
 
 local function UpdateState()
     local open = IsEnabled() and AnyDialogShown()
-    local inCombat = InCombatLockdown()
+    local combat = inCombat or InCombatLockdown()
 
-    if open and XpieHUDDB.questDialogHideUI and not inCombat then
-        FadeUI()
+    if open and XpieHUDDB.questDialogHideUI and not combat then
+        FadeUIAll()
     elseif uiFaded then
         RestoreUI()
     end
 
     if keyFrame then
-        keyFrame:SetShown(open and XpieHUDDB.questDialogKeys and not inCombat)
+        keyFrame:SetShown(open and XpieHUDDB.questDialogKeys and not combat)
     end
 end
 
@@ -444,10 +558,14 @@ end
 local eventFrame = CreateFrame("Frame")
 eventFrame:SetScript("OnEvent", function(_, event)
     if event == "PLAYER_REGEN_DISABLED" then
+        inCombat = true   -- InCombatLockdown() can still be false during this event
         if uiFaded then RestoreUI() end
         if keyFrame then keyFrame:Hide() end
+        RefreshBadges()
     elseif event == "PLAYER_REGEN_ENABLED" then
+        inCombat = false
         UpdateState()
+        RefreshBadges()
     end
 end)
 
@@ -493,4 +611,64 @@ function addon:ResetQuestDialogPosition()
     self:ApplyAll()
     self:RefreshSettings()
     self:Print("Quest window position and scale reset. The position takes effect the next time the window opens.")
+end
+
+-- /xhud questhide <FrameName>: toggle an extra frame (by global name) in the
+-- fade list. Names are case-sensitive.
+function addon:ToggleQuestExtraFrame(name)
+    if not name or name == "" then
+        local names = {}
+        for extra in pairs(XpieHUDDB.questExtraFrames or {}) do names[#names + 1] = extra end
+        table.sort(names)
+        self:Print("Extra frames faded while talking: " .. (#names > 0 and table.concat(names, ", ") or "none"))
+        self:Print("Usage: /xhud questhide <FrameName>   (find names with /xhud questscan while a quest window is open)")
+        return
+    end
+    XpieHUDDB.questExtraFrames = XpieHUDDB.questExtraFrames or {}
+    if XpieHUDDB.questExtraFrames[name] then
+        XpieHUDDB.questExtraFrames[name] = nil
+        local frame = _G[name]
+        if type(frame) == "table" and faded[frame] ~= nil then RestoreFrame(frame) end
+        self:Print("No longer fading |cffffffff" .. name .. "|r.")
+    else
+        if type(_G[name]) ~= "table" or not _G[name].SetAlpha then
+            self:Print("No frame named |cffffffff" .. name .. "|r right now (names are case-sensitive). Saved anyway; it'll be used if it appears.")
+        else
+            self:Print("Now fading |cffffffff" .. name .. "|r while talking.")
+        end
+        XpieHUDDB.questExtraFrames[name] = true
+    end
+    UpdateState()
+end
+
+-- /xhud questscan: with a quest/gossip window open, list what's still visible
+-- on UIParent so stragglers from other addons can be added with questhide.
+function addon:ScanQuestVisibleFrames()
+    if not AnyDialogShown() then
+        self:Print("Open a quest, gossip or book window first, then run /xhud questscan again (e.g. from a macro).")
+        return
+    end
+    local isDialog = {}
+    for _, frame in ipairs(dialogFrames) do isDialog[frame] = true end
+    if keyFrame then isDialog[keyFrame] = true end
+
+    local found = {}
+    for _, child in ipairs({ UIParent:GetChildren() }) do
+        if not isDialog[child] and not faded[child] and child:IsVisible()
+           and child:GetEffectiveAlpha() > 0.05 then
+            local w, h = child:GetSize()
+            local left, top = child:GetLeft(), child:GetTop()
+            if w and h and w * h >= 400 and left and top then
+                found[#found + 1] = { child = child, name = child:GetName(), w = w, h = h, left = left, top = top }
+            end
+        end
+    end
+    table.sort(found, function(a, b) return (a.w * a.h) > (b.w * b.h) end)
+
+    self:Print(#found .. " visible frame(s) on UIParent (largest first):")
+    for index, entry in ipairs(found) do
+        if index > 20 then break end
+        local label = entry.name or ("<unnamed> " .. (entry.child.GetDebugName and entry.child:GetDebugName() or "?"))
+        self:Print(string.format("  |cffffffff%s|r  %dx%d at (%d, %d)", label, entry.w, entry.h, entry.left, entry.top))
+    end
 end

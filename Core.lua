@@ -105,23 +105,28 @@ function addon:Reset()
 end
 
 local function HandleSlashCommand(input)
-    local command = strtrim(string.lower(input or ""))
+    -- Lowercase only the command word; frame-name arguments are case-sensitive.
+    local verb, rest = strtrim(input or ""):match("^(%S*)%s*(.-)$")
+    local command = string.lower(verb or "")
+    local arg = rest ~= "" and rest or nil
     if command == "" then
         addon:OpenSettings()
     elseif command == "chat" or command == "minimap" then
         addon:Toggle(command)
     elseif command == "showall" then
         addon:ShowAll()
-    elseif command == "meter" or command:sub(1,6) == "meter " then
-        local arg = command:sub(7)
-        addon:CycleChatMeter(arg ~= "" and arg or nil)
+    elseif command == "meter" then
+        addon:CycleChatMeter(arg)
     elseif command == "button" then
         addon:ToggleChatMeterButton()
-    elseif command:sub(1, 11) == "meterframe" then
-        local arg = strtrim(command:sub(12))
-        addon:SetMeterFrameName(arg ~= "" and arg or nil)
+    elseif command == "meterframe" then
+        addon:SetMeterFrameName(arg)
     elseif command == "questreset" then
         addon:ResetQuestDialogPosition()
+    elseif command == "questhide" then
+        addon:ToggleQuestExtraFrame(arg)
+    elseif command == "questscan" then
+        addon:ScanQuestVisibleFrames()
     elseif command == "reset" then
         local now = GetTime()
         if addon.resetPendingUntil and now <= addon.resetPendingUntil then
@@ -131,7 +136,7 @@ local function HandleSlashCommand(input)
             addon:Print("Type |cffffffff/xpiehud reset|r again within 15 seconds to confirm.")
         end
     else
-        addon:Print("Commands: /xpiehud, chat, minimap, meter [0|1|2], button, meterframe [name], questreset, showall, reset")
+        addon:Print("Commands: /xpiehud, chat, minimap, meter [0|1|2], button, meterframe [name], questreset, questscan, questhide [name], showall, reset")
     end
 end
 

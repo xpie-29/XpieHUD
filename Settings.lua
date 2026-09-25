@@ -17,7 +17,7 @@ local rxpPanelOptions = {
 local questOptions = {
     { key = "questDialogEnabled", label = "Enable Quest Window Enhancements", description = "Master switch for everything in this section. Blizzard's quest and gossip windows themselves are never replaced." },
     { key = "questDialogKeys",    label = "Keyboard Shortcuts",   description = "1–9 pick options, quests and rewards. Space accepts, continues or completes. Out of combat only; all other keys pass through." },
-    { key = "questDialogBadges",  label = "Number Badges",        description = "Show small numbers next to the options the 1–9 keys select." },
+    { key = "questDialogBadges",  label = "Number Badges & Key Hints", description = "Show numbers on the options the 1–9 keys select, and small Space / Esc hints beside the window's buttons." },
     { key = "questDialogHideUI",  label = "Hide UI While Talking", description = "Fade the rest of the interface while a quest, gossip or book window is open. Restores on close or when combat starts." },
 }
 
@@ -274,7 +274,7 @@ function addon:CreateSettings()
     qNote:SetPoint("TOPLEFT", 24, y)
     qNote:SetWidth(560)
     qNote:SetJustifyH("LEFT")
-    qNote:SetText("Applies to the quest, gossip and book/plaque windows. Shift+drag a window to move it. /xhud questreset restores the default position and size.")
+    qNote:SetText("Applies to the quest, gossip and book/plaque windows. Drag a window's title bar to move it. /xhud questreset restores the default position and size. Other addons' panels can be added to the fade with /xhud questscan and /xhud questhide.")
     y = y - 30
 
     for _, option in ipairs(questOptions) do
