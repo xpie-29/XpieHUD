@@ -17,6 +17,7 @@ local _, addon = ...
 -- ---------------------------------------------------------------------------
 
 local extraAbilityHooked = false
+local rxpFlagsForced = {}   -- RXP profile flags XpieHUD switched off, to switch back on
 
 local function Frames(...)
     local result = {}
@@ -241,10 +242,11 @@ local frameGroups = {
     rxpTargets = function()
         -- "Active Targets" panel. Confirmed global from Targeting.lua:824.
         -- Also set RXP's own profile flag so IsFeatureEnabled() returns false.
-        if XpieHUDDB and XpieHUDDB.hideRXPTargets then
+        if addon:RXPOpt("hideRXPTargets") then
             local rxp = _G["RXPGuides"]
             if rxp and rxp.settings and rxp.settings.profile then
                 rxp.settings.profile.enableTargetFrame = false
+                rxpFlagsForced.targets = true
             end
         end
         return Frames(_G["RXPTargetFrame"])
@@ -252,10 +254,11 @@ local frameGroups = {
     rxpItems = function()
         -- "Active Items" panel. Confirmed global from ActiveItemFrame.lua:266.
         -- Also set RXP's own profile flag so UpdateItemFrame() returns early.
-        if XpieHUDDB and XpieHUDDB.hideRXPItems then
+        if addon:RXPOpt("hideRXPItems") then
             local rxp = _G["RXPGuides"]
             if rxp and rxp.settings and rxp.settings.profile then
                 rxp.settings.profile.disableItemWindow = true
+                rxpFlagsForced.items = true
             end
         end
         return Frames(_G["RXPItemFrame"])
@@ -342,22 +345,28 @@ function addon:ApplyAll(forceShow)
     ApplyAlphaGroup("statusBar2", XpieHUDDB.hideStatusBar2)
     ApplyAlphaGroup("microMenu", XpieHUDDB.hideMicroMenu)
     ApplyAlphaGroup("bagBar", XpieHUDDB.hideBagBar)
-    ApplyHideGroup("rxpTargets", XpieHUDDB.hideRXPTargets, forceShow and not XpieHUDDB.hideRXPTargets)
-    ApplyHideGroup("rxpItems", XpieHUDDB.hideRXPItems, forceShow and not XpieHUDDB.hideRXPItems)
-    -- Restore RXP profile flags when panels are re-enabled
-    if forceShow then
-        local rxp = _G["RXPGuides"]
-        if rxp and rxp.settings and rxp.settings.profile then
-            if not XpieHUDDB.hideRXPTargets then
-                rxp.settings.profile.enableTargetFrame = true
-            end
-            if not XpieHUDDB.hideRXPItems then
-                rxp.settings.profile.disableItemWindow = false
-            end
+    local hideTargets = addon:RXPOpt("hideRXPTargets") and true or false
+    local hideItems = addon:RXPOpt("hideRXPItems") and true or false
+    ApplyHideGroup("rxpTargets", hideTargets, forceShow and not hideTargets)
+    ApplyHideGroup("rxpItems", hideItems, forceShow and not hideItems)
+    -- Restore RXP profile flags when panels are re-enabled (or RestedXP is
+    -- unticked in the guide selector)
+    local rxp = _G["RXPGuides"]
+    if rxp and rxp.settings and rxp.settings.profile then
+        if not hideTargets and (forceShow or rxpFlagsForced.targets) then
+            rxp.settings.profile.enableTargetFrame = true
+            rxpFlagsForced.targets = nil
+        end
+        if not hideItems and (forceShow or rxpFlagsForced.items) then
+            rxp.settings.profile.disableItemWindow = false
+            rxpFlagsForced.items = nil
         end
     end
     self:ApplyExtraAbilityScale()
     self:ApplyRXP()
+    if self.ApplyZygor then
+        self:ApplyZygor()
+    end
     if self.ApplyQuestDialog then
         self:ApplyQuestDialog()
     end

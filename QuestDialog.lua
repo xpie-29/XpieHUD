@@ -163,12 +163,21 @@ local hideGroups = {
     { key = "questHideMinimap", frames = function()
         return Collect({}, MinimapCluster)
     end },
+    -- "Guide Addons": whichever guide addons are ticked in the guide selector.
+    -- (Key kept as questHideRXP so existing settings carry over.)
     { key = "questHideRXP", frames = function()
-        local rxp = _G["RXPGuides"]
-        local arrow = rxp and rxp.enabledFrames and rxp.enabledFrames.arrowFrame
-        -- RXPG_ARROW: the waypoint arrow (map.lua). RXP only touches its alpha on
-        -- state changes, so a fade sticks.
-        return Collect({}, _G["RXPFrame"], _G["RXPTargetFrame"], _G["RXPItemFrame"], _G["RXPG_ARROW"], arrow)
+        local list = {}
+        if XpieHUDDB.guideRXP then
+            local rxp = _G["RXPGuides"]
+            local arrow = rxp and rxp.enabledFrames and rxp.enabledFrames.arrowFrame
+            -- RXPG_ARROW: the waypoint arrow (map.lua). RXP only touches its alpha on
+            -- state changes, so a fade sticks.
+            Collect(list, _G["RXPFrame"], _G["RXPTargetFrame"], _G["RXPItemFrame"], _G["RXPG_ARROW"], arrow)
+        end
+        if addon.GetZygorFrames then
+            Collect(list, unpack(addon:GetZygorFrames()))
+        end
+        return list
     end },
     { key = "questHideBuffs", frames = function()
         return Collect({}, BuffFrame, DebuffFrame)

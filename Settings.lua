@@ -15,6 +15,17 @@ local rxpPanelOptions = {
     { key = "rxpGoldArrow",   label = "Gold Waypoint Arrow", description = "Replace the RestedXP waypoint arrow with a gold arrowhead in Blizzard's HUD style." },
 }
 
+-- Guide addon selector: tick the guide addon(s) currently in use.
+local guideOptions = {
+    { key = "guideRXP",   addon = "RXPGuides",         label = "RestedXP Guides", description = "Style RestedXP (options in the RestedXP section below)." },
+    { key = "guideZygor", addon = "ZygorGuidesViewer", label = "Zygor Guides",    description = "Style Zygor (options in the Zygor section below)." },
+}
+
+local zygorOptions = {
+    { key = "zygorStrip",     label = "Strip Backgrounds & Borders", description = "Transparent Zygor window background and borders; step boxes keep their colours at 30% opacity." },
+    { key = "zygorGoldArrow", label = "Gold Waypoint Arrow",         description = "Use the XpieHUD gold arrowhead as Zygor's arrow skin (also selectable as \"XpieHUD Gold\" in Zygor's own options)." },
+}
+
 local questOptions = {
     { key = "questDialogEnabled", label = "Enable Quest Window Enhancements", description = "Master switch for everything in this section. Blizzard's quest and gossip windows themselves are never replaced." },
     { key = "questDialogKeys",    label = "Keyboard Shortcuts",   description = "1–9 pick options, quests and rewards. Space accepts, continues or completes. Out of combat only; all other keys pass through." },
@@ -30,7 +41,7 @@ local questHideOptions = {
     { key = "questHideTracker",    label = "Objective Tracker" },
     { key = "questHideChat",       label = "Chat & Meter" },
     { key = "questHideMinimap",    label = "Minimap" },
-    { key = "questHideRXP",        label = "RestedXP" },
+    { key = "questHideRXP",        label = "Guide Addons" },
     { key = "questHideBuffs",      label = "Buffs & Debuffs" },
 }
 
@@ -184,6 +195,31 @@ function addon:CreateSettings()
     y = y - 82
 
     -- -----------------------------------------------------------------------
+    -- Guide Addons selector
+    -- -----------------------------------------------------------------------
+    local guideHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    guideHead:SetPoint("TOPLEFT", 16, y)
+    guideHead:SetText("|cff70d5ffGuide Addons|r")
+    y = y - 22
+
+    local guideNote = content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    guideNote:SetPoint("TOPLEFT", 24, y)
+    guideNote:SetWidth(560)
+    guideNote:SetJustifyH("LEFT")
+    guideNote:SetText("Tick the guide addon(s) you're using. Unticked guides are left completely alone, and anything XpieHUD changed on them is put back.")
+    y = y - 30
+
+    for _, option in ipairs(guideOptions) do
+        CreateCheckbox(content, option, y)
+        -- "(not loaded)" status, filled in by RefreshSettings
+        local status = content:CreateFontString(nil, "ARTWORK", "GameFontDisableSmall")
+        status:SetPoint("TOPLEFT", 240, y - 6)
+        controls[option.key].status = status
+        y = y - 52
+    end
+    y = y - 8
+
+    -- -----------------------------------------------------------------------
     -- RestedXP section
     -- -----------------------------------------------------------------------
     local rxpHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
@@ -227,6 +263,20 @@ function addon:CreateSettings()
         min = 0, max = 100, step = 5, format = "%d%%", y = y,
     })
     y = y - 82
+
+    -- -----------------------------------------------------------------------
+    -- Zygor section
+    -- -----------------------------------------------------------------------
+    local zgvHead = content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    zgvHead:SetPoint("TOPLEFT", 16, y)
+    zgvHead:SetText("|cff70d5ffZygor Guides|r")
+    y = y - 22
+
+    for _, option in ipairs(zygorOptions) do
+        CreateCheckbox(content, option, y)
+        y = y - 52
+    end
+    y = y - 8
 
     -- -----------------------------------------------------------------------
     -- Chat / Meter Toggle section
@@ -361,7 +411,14 @@ function addon:RefreshSettings()
             controls[option.key]:SetChecked(XpieHUDDB[option.key])
         end
     end
-    for _, list in ipairs({ questOptions, questHideOptions }) do
+    for _, option in ipairs(guideOptions) do
+        local check = controls[option.key]
+        if check then
+            check:SetChecked(XpieHUDDB[option.key])
+            check.status:SetText(C_AddOns.IsAddOnLoaded(option.addon) and "" or "(not loaded)")
+        end
+    end
+    for _, list in ipairs({ questOptions, questHideOptions, zygorOptions }) do
         for _, option in ipairs(list) do
             if controls[option.key] then
                 controls[option.key]:SetChecked(XpieHUDDB[option.key])

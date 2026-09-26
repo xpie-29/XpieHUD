@@ -105,7 +105,7 @@ local function HookBackdropOnFrame(f)
 
     hooksecurefunc(f, "SetBackdropColor", function(self)
         if applyingBackdropColor then return end
-        if XpieHUDDB and XpieHUDDB.rxpHideBorders then
+        if addon:RXPOpt("rxpHideBorders") then
             applyingBackdropColor = true
             local a = IsStepFrame(self) and STEP_FRAME_BG_ALPHA or 0
             self:SetBackdropColor(0, 0, 0, a)
@@ -115,7 +115,7 @@ local function HookBackdropOnFrame(f)
 
     hooksecurefunc(f, "SetBackdropBorderColor", function(self)
         if applyingBackdropBorderColor then return end
-        if XpieHUDDB and XpieHUDDB.rxpHideBorders then
+        if addon:RXPOpt("rxpHideBorders") then
             applyingBackdropBorderColor = true
             self:SetBackdropBorderColor(0, 0, 0, 0)
             applyingBackdropBorderColor = false
@@ -295,7 +295,7 @@ local function HookRXPSizeChanged()
     rxpSizeHooked = true
 
     rxpMain:HookScript("OnSizeChanged", function()
-        if XpieHUDDB and XpieHUDDB.rxpHideBorders then
+        if addon:RXPOpt("rxpHideBorders") then
             -- Small defer so RXP's own OnSizeChanged runs first
             C_Timer.After(0.05, function()
                 StripAll(CollectRXPFrames())
@@ -311,7 +311,7 @@ local function HookOnShow(frames)
             rxpOnShowHooked[f] = true
             f:HookScript("OnShow", function()
                 C_Timer.After(0, function()
-                    if XpieHUDDB and XpieHUDDB.rxpHideBorders then
+                    if addon:RXPOpt("rxpHideBorders") then
                         StripAll(CollectRXPFrames())
                     end
                     addon:ApplyRXPAlpha(CollectRXPFrames())
@@ -335,7 +335,7 @@ local function ScheduleLoginStrip()
             if addon.ready then
                 addon:ApplyAll()
             end
-            if not (XpieHUDDB and XpieHUDDB.rxpHideBorders) then return end
+            if not addon:RXPOpt("rxpHideBorders") then return end
             local frames = CollectRXPFrames()
             if #frames > 0 then
                 HookRXPSizeChanged()
@@ -351,7 +351,7 @@ end
 -- ---------------------------------------------------------------------------
 function addon:ApplyRXPBorders(frames)
     frames = frames or CollectRXPFrames()
-    if XpieHUDDB.rxpHideBorders then
+    if addon:RXPOpt("rxpHideBorders") then
         HookRXPSizeChanged()
         HookOnShow(frames)
         StripAll(frames)
@@ -367,6 +367,8 @@ function addon:ApplyRXPAlpha(frames)
 
     local pct = tonumber(XpieHUDDB and XpieHUDDB.rxpFrameAlpha)
     if pct == nil then pct = self.defaults.rxpFrameAlpha end
+    -- RestedXP unticked in the guide selector: back to fully opaque.
+    if not (XpieHUDDB and XpieHUDDB.guideRXP) then pct = 100 end
     local alpha = math.max(0, math.min(100, pct)) / 100
 
     for _, f in ipairs(frames) do
@@ -391,7 +393,7 @@ function addon:ApplyRXPArrow()
     if not arrowHooked then
         arrowHooked = true
         hooksecurefunc(arrow, "UpdateVisuals", function(self)
-            if XpieHUDDB and XpieHUDDB.rxpGoldArrow then
+            if addon:RXPOpt("rxpGoldArrow") then
                 self.texture:SetTexture(ARROW_TEXTURE)
             end
         end)
@@ -401,7 +403,19 @@ function addon:ApplyRXPArrow()
     arrow:UpdateVisuals()
 end
 
+-- Guide selector: when RestedXP is unticked, undo what we changed once and
+-- then leave RXP completely alone.
+local rxpTouched = false
+
+function addon:RXPOpt(key)
+    return XpieHUDDB and XpieHUDDB.guideRXP and XpieHUDDB[key]
+end
+
 function addon:ApplyRXP()
+    if not _G["RXPFrame"] and not _G["RXPG_ARROW"] then return end   -- RXP not loaded
+    if not XpieHUDDB.guideRXP and not rxpTouched then return end
+    rxpTouched = XpieHUDDB.guideRXP and true or false
+
     local frames = CollectRXPFrames()
     self:ApplyRXPAlpha(frames)
     self:ApplyRXPBorders(frames)

@@ -12,6 +12,13 @@ addon.defaults = {
     hideBagBar       = false,
     extraAbilityScale = 100,
     -- RestedXP transparency and borders
+    -- Guide addon selector: which guide addon(s) XpieHUD styles
+    guideRXP         = true,
+    guideZygor       = true,
+    -- Zygor Guides Viewer (Zygor.lua)
+    zygorStrip       = true,  -- transparent window chrome, step boxes at 30%
+    zygorGoldArrow   = true,  -- "XpieHUD Gold" arrow skin
+    -- zygorPrevArrowSkin: the Zygor arrow skin to restore when zygorGoldArrow is off
     rxpFrameAlpha    = 100,   -- 0–100; 100 = fully visible (default, no change)
     rxpHideBorders   = false, -- strip border/edge textures from RXP frames
     rxpGoldArrow     = true,  -- replace RXP's waypoint arrow with Media/rxp_arrow.tga
@@ -151,6 +158,14 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         XpieHUDDB = type(XpieHUDDB) == "table" and XpieHUDDB or {}
         CopyDefaults()
         addon:CreateSettings()
+        -- Zygor normally loads after us (alphabetical); if it somehow loaded
+        -- first, hook it now.
+        if C_AddOns.IsAddOnLoaded("ZygorGuidesViewer") then
+            addon:OnZygorLoaded()
+        end
+    elseif event == "ADDON_LOADED" and arg1 == "ZygorGuidesViewer" then
+        -- Before Zygor builds its window: register our arrow skin, hook step frames.
+        addon:OnZygorLoaded()
     elseif event == "ADDON_LOADED" and arg1 == "Blizzard_UIPanels_Game" and addon.ready then
         addon:ApplyAll()
     elseif event == "ADDON_LOADED" and arg1 == "RXPGuides" then
@@ -163,6 +178,8 @@ eventFrame:SetScript("OnEvent", function(_, event, arg1)
         addon:ApplyAll()
         -- RXP creates step frames lazily; schedule staggered init passes
         addon:ScheduleRXPInit()
+        -- Zygor builds its window and arrow in a background thread after login
+        addon:ScheduleZygorInit()
         -- Create chat/meter toggle button and restore saved state
         addon:CreateChatMeterButton()
         -- Quest window hooks go in after the login load window (see the map-taint note)
