@@ -93,6 +93,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Version History
 
+- **1.2.2**: Fix ADDON_ACTION_BLOCKED (SetPropagateKeyboardInput) when reloading in combat; quest keys reset to pass-through on key release
 - **1.2.1**: Zygor title logo hidden with the window chrome; Zygor step boxes at 50% opacity
 - **1.2.0**: Zygor Guides integration (transparent window, 30% step boxes, gold arrow skin); guide addon selector (RestedXP / Zygor / both); quest fade "RestedXP" option is now "Guide Addons"
 - **1.1.6**: Gold arrowhead replaces the RestedXP waypoint arrow (toggle in settings)

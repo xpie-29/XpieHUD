@@ -373,12 +373,23 @@ local function CreateKeyFrame()
     keyFrame = CreateFrame("Frame", nil, UIParent)
     keyFrame:Hide()
     keyFrame:EnableKeyboard(true)
-    keyFrame:SetPropagateKeyboardInput(true)
+    -- SetPropagateKeyboardInput is restricted in combat, and a /reload can land
+    -- us here mid-combat. Only set the default when allowed; OnKeyDown sets
+    -- it for every key anyway, before the game decides where the key goes.
+    if not InCombatLockdown() then
+        keyFrame:SetPropagateKeyboardInput(true)
+    end
     keyFrame:SetScript("OnKeyDown", function(self, key)
-        -- SetPropagateKeyboardInput is restricted in combat; the frame is
-        -- hidden on PLAYER_REGEN_DISABLED, this is just a safety net.
+        -- The frame is hidden on PLAYER_REGEN_DISABLED; this is a safety net.
         if InCombatLockdown() then return end
         self:SetPropagateKeyboardInput(not HandleKey(key))
+    end)
+    -- Back to pass-through after every key, so a key handled right before
+    -- combat can't leave the frame swallowing keys while the flag is locked.
+    keyFrame:SetScript("OnKeyUp", function(self)
+        if not InCombatLockdown() then
+            self:SetPropagateKeyboardInput(true)
+        end
     end)
 end
 
