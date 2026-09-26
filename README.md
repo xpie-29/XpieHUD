@@ -66,8 +66,8 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Installation
 
-1. Download the latest release zip (including the `Media` folder)
-2. Extract the `XpieHUD` folder into your `World of Warcraft/_retail_/Interface/AddOns/` directory
+1. Download the latest release zip
+2. Extract the `XpieHUD` folder (including its `Media` subfolder) into your `World of Warcraft/_retail_/Interface/AddOns/` directory
 3. Reload the UI or restart WoW
 
 ## Requirements
