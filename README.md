@@ -76,6 +76,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Notes
 
+- Blizzard HUD elements (chat, minimap, micro menu, bag bar, status bars, damage meter) are hidden by making them transparent and click-through, never with `Hide()`. Most are Edit Mode frames, and hiding them from addon code taints Blizzard's layout system (this caused the old `ADDON_ACTION_BLOCKED` error when opening the world map). The minimap is moved off-screen instead, because its blips ignore transparency.
 - The native damage meter frame name varies by patch. If the meter toggle doesn't work, run `/xhud meterframe` to scan for it, then set it with `/xhud meterframe <name>`. This is saved permanently.
 - RestedXP border stripping works on all themes (Custom, Dark Mode, etc.) and survives theme switches.
 - The chat/meter toggle button position is saved across sessions.
@@ -84,6 +85,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Version History
 
+- **1.1.5**: Fix world map `ADDON_ACTION_BLOCKED` (SetPropagateMouseClicks) and Objective Tracker secret-aura taint: Blizzard frames are now hidden by alpha + mouse instead of Hide(); minimap moved off-screen instead of hidden; chat shows while typing when hidden
 - **1.1.4**: RestedXP step frame background darkened to 30%
 - **1.1.3**: Quest entries keep their native icon with a small gold number on it (options keep the dimmed-icon number); tooltips at cursor while talking; fade Personal Resource Display and MicroButtonAndBagsBar; badge/hint offsets tuned in game
 - **1.1.2**: Gold number badges; badge and key-hint alignment; chat shows while typing mid-dialog; `questscan` arms itself for the next NPC and skips frames it cannot inspect

@@ -231,37 +231,19 @@ local function FadeUI()
 end
 
 -- The minimap draws blips, quest areas and the player arrow outside normal
--- alpha inheritance, so fading MinimapCluster leaves them floating. The
--- Minimap itself isn't protected; Hide/Show it (only if we were the ones
--- who hid it).
-local minimapHidden = false
-
-local function CanToggleMinimap()
-    return Minimap and not (InCombatLockdown() and Minimap:IsProtected())
-end
-
-local function HideMinimap()
-    if minimapHidden or not CanToggleMinimap() or not Minimap:IsShown() then return end
-    Minimap:Hide()
-    minimapHidden = true
-end
-
-local function ShowMinimap()
-    if not minimapHidden or not CanToggleMinimap() then return end
-    Minimap:Show()
-    minimapHidden = false
-end
-
+-- alpha inheritance, so fading MinimapCluster leaves them floating. It's moved
+-- off-screen instead (Visibility.lua; no Hide(), which would run Blizzard's
+-- minimap scripts as XpieHUD and taint them).
 local function FadeUIAll()
     FadeUI()
-    if XpieHUDDB.questHideMinimap then HideMinimap() else ShowMinimap() end
+    addon:SetMinimapAway("quest", XpieHUDDB.questHideMinimap)
 end
 
 local function RestoreUI()
     for frame in pairs(faded) do
         RestoreFrame(frame)
     end
-    ShowMinimap()
+    addon:SetMinimapAway("quest", false)
     uiFaded = false
 end
 

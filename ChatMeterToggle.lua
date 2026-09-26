@@ -52,29 +52,14 @@ local function FindMeterFrame()
 end
 addon.FindMeterFrame = FindMeterFrame   -- QuestDialog.lua fades the meter with the chat group
 
-local meterOnShowHooked = false
-
+-- The native meter is an Edit Mode system frame: hide it by alpha + mouse
+-- (Visibility.lua), never Hide()/Show(), or its Edit Mode layout code runs as
+-- XpieHUD and taints the UI. Alpha also survives the meter re-showing itself
+-- on data updates, so no OnShow hook is needed.
 local function SetMeterVisible(show)
     local f = FindMeterFrame()
     if not f then return end
-
-    if show then
-        f:Show()
-    else
-        f:Hide()
-        -- Hook OnShow so data-driven re-shows are immediately suppressed
-        if not meterOnShowHooked then
-            meterOnShowHooked = true
-            f:HookScript("OnShow", function(self)
-                if XpieHUDDB and XpieHUDDB.chatMeterState then
-                    local def = STATES[XpieHUDDB.chatMeterState]
-                    if def and not def.meter then
-                        self:Hide()
-                    end
-                end
-            end)
-        end
-    end
+    addon:SetFrameAlphaHidden(f, not show)
 end
 
 -- Set meter frame name manually (from /xhud meterframe <name>)
