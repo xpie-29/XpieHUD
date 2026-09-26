@@ -18,7 +18,7 @@ A lightweight World of Warcraft addon for personal HUD management. Built for Ret
 - **Gold Waypoint Arrow** — replaces the RestedXP waypoint arrow with a gold arrowhead in Blizzard's HUD style (`Media/rxp_arrow.tga`); survives RXP theme changes
 
 ### Zygor Guides Integration
-- **Strip Backgrounds & Borders** — transparent Zygor window background, borders, tab strip and toolbar; step boxes keep Zygor's state colours (normal, complete, unavailable) at 30% opacity without edges. Survives Zygor skin changes.
+- **Strip Backgrounds & Borders** — transparent Zygor window background, borders, tab strip and toolbar, title logo hidden; step boxes keep Zygor's state colours (normal, complete, unavailable) at 50% opacity without edges. Survives Zygor skin changes.
 - **Gold Waypoint Arrow** — the same gold arrowhead, registered as a native Zygor arrow skin ("XpieHUD Gold", `Media/Zygor/arrow.tga`: 160 pre-rotated frames). Zygor's arrived / stairs / taxi icons are unchanged.
 
 ### Guide Addon Selector
@@ -93,6 +93,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Version History
 
+- **1.2.1**: Zygor title logo hidden with the window chrome; Zygor step boxes at 50% opacity
 - **1.2.0**: Zygor Guides integration (transparent window, 30% step boxes, gold arrow skin); guide addon selector (RestedXP / Zygor / both); quest fade "RestedXP" option is now "Guide Addons"
 - **1.1.6**: Gold arrowhead replaces the RestedXP waypoint arrow (toggle in settings)
 - **1.1.5**: Fix world map `ADDON_ACTION_BLOCKED` (SetPropagateMouseClicks) and Objective Tracker secret-aura taint: Blizzard frames are now hidden by alpha + mouse instead of Hide(); minimap moved off-screen instead of hidden; chat shows while typing when hidden

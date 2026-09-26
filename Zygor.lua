@@ -14,7 +14,7 @@
 
 local _, addon = ...
 
-local STEP_BG_ALPHA = 0.3                   -- same as RestedXP step frames
+local STEP_BG_ALPHA = 0.5                   -- step box tint (readable on dark ground)
 local SKIN_ID       = "XpieHUD"
 local SKIN_NAME     = "XpieHUD Gold"
 local MEDIA_DIR     = "Interface\\AddOns\\XpieHUD\\Media\\Zygor\\"
@@ -41,6 +41,14 @@ local function ClearBackdrop(f)
     clearing = false
 end
 
+-- Title-bar "ZYGOR" logo (Border.TitleBar.Logo, a texture). Zygor only sets its
+-- image and size, never its alpha, so hiding it by alpha sticks.
+local function SetLogoShown(shown)
+    local frame = _G.ZGV and _G.ZGV.Frame
+    local logo = frame and frame.Controls and frame.Controls.Logo
+    if logo then logo:SetAlpha(shown and 1 or 0) end
+end
+
 -- Zygor re-colours its window on skin changes and flashes the border when a
 -- step completes; keep whatever colour it wants but at zero alpha.
 local hookedChrome = {}
@@ -60,6 +68,11 @@ local function ChromeFrames()
     local border = frame and frame.Border
     if not border then return {} end
     return { border, border.Back, border.TabContainer, border.Toolbar }
+end
+
+local function StripChrome()
+    for _, f in ipairs(ChromeFrames()) do ClearBackdrop(f) end
+    SetLogoShown(false)
 end
 
 -- ---------------------------------------------------------------------------
@@ -201,7 +214,7 @@ function addon:ApplyZygor()
         frameHooked = true
         hooksecurefunc(frame, "ApplySkin", function()
             if not StripOn() then return end
-            for _, f in ipairs(ChromeFrames()) do ClearBackdrop(f) end
+            StripChrome()
             ForEachStep(StyleStep)
         end)
     end
@@ -211,12 +224,13 @@ function addon:ApplyZygor()
         ForEachStep(HookStepInstance)
 
         if StripOn() then
-            for _, f in ipairs(ChromeFrames()) do ClearBackdrop(f) end
+            StripChrome()
             ForEachStep(StyleStep)
             stripped = true
         elseif stripped then
             -- Let Zygor repaint its own skin and step colours.
             stripped = false
+            SetLogoShown(true)
             frame:ApplySkin()
             if ZGV.UpdateFrame then ZGV:UpdateFrame(true) end
         end

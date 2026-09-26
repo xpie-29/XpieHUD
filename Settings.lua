@@ -22,7 +22,7 @@ local guideOptions = {
 }
 
 local zygorOptions = {
-    { key = "zygorStrip",     label = "Strip Backgrounds & Borders", description = "Transparent Zygor window background and borders; step boxes keep their colours at 30% opacity." },
+    { key = "zygorStrip",     label = "Strip Backgrounds & Borders", description = "Transparent Zygor window background and borders; step boxes keep their colours at 50% opacity; title logo hidden." },
     { key = "zygorGoldArrow", label = "Gold Waypoint Arrow",         description = "Use the XpieHUD gold arrowhead as Zygor's arrow skin (also selectable as \"XpieHUD Gold\" in Zygor's own options)." },
 }
 
