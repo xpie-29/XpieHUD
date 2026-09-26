@@ -2,7 +2,7 @@
 ## Title: XpieHUD
 ## Notes: Lightweight visibility controls for the default Retail HUD.
 ## Author: Jeremy / Xpie
-## Version: 1.1.5
+## Version: 1.1.6
 ## SavedVariables: XpieHUDDB
 ## Category-enUS: User Interface
 

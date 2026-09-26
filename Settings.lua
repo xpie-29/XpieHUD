@@ -12,6 +12,7 @@ local options = {
 local rxpPanelOptions = {
     { key = "hideRXPTargets", label = "Hide Active Targets", description = "Hide the RestedXP Active Targets panel." },
     { key = "hideRXPItems",   label = "Hide Active Items",   description = "Hide the RestedXP Active Items / spells panel." },
+    { key = "rxpGoldArrow",   label = "Gold Waypoint Arrow", description = "Replace the RestedXP waypoint arrow with a gold arrowhead in Blizzard's HUD style." },
 }
 
 local questOptions = {

@@ -374,10 +374,38 @@ function addon:ApplyRXPAlpha(frames)
     end
 end
 
+-- ---------------------------------------------------------------------------
+-- Waypoint arrow texture
+-- RXPG_ARROW (map.lua) is one texture that RXP rotates toward the waypoint;
+-- its image is set only in RXPG_ARROW:UpdateVisuals() (on init and theme
+-- change). Post-hook that and swap in XpieHUD's gold arrowhead. Any image
+-- works as long as it points up.
+-- ---------------------------------------------------------------------------
+local ARROW_TEXTURE = "Interface\\AddOns\\XpieHUD\\Media\\rxp_arrow.tga"
+local arrowHooked = false
+
+function addon:ApplyRXPArrow()
+    local arrow = _G["RXPG_ARROW"]
+    if not (arrow and arrow.texture and arrow.UpdateVisuals) then return end
+
+    if not arrowHooked then
+        arrowHooked = true
+        hooksecurefunc(arrow, "UpdateVisuals", function(self)
+            if XpieHUDDB and XpieHUDDB.rxpGoldArrow then
+                self.texture:SetTexture(ARROW_TEXTURE)
+            end
+        end)
+    end
+    -- Re-run RXP's own visuals: restores its texture when the option is off,
+    -- and our hook swaps it when on.
+    arrow:UpdateVisuals()
+end
+
 function addon:ApplyRXP()
     local frames = CollectRXPFrames()
     self:ApplyRXPAlpha(frames)
     self:ApplyRXPBorders(frames)
+    self:ApplyRXPArrow()
 end
 
 -- Called once from Core.lua on PLAYER_LOGIN

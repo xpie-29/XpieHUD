@@ -14,6 +14,7 @@ addon.defaults = {
     -- RestedXP transparency and borders
     rxpFrameAlpha    = 100,   -- 0–100; 100 = fully visible (default, no change)
     rxpHideBorders   = false, -- strip border/edge textures from RXP frames
+    rxpGoldArrow     = true,  -- replace RXP's waypoint arrow with Media/rxp_arrow.tga
     hideRXPTargets      = false, -- hide the RXP Active Targets panel
     hideRXPItems        = false, -- hide the RXP Active Items panel
     chatMeterState      = nil,    -- nil = feature unused; 0/1/2 = active state

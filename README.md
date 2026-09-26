@@ -15,6 +15,7 @@ A lightweight World of Warcraft addon for personal HUD management. Built for Ret
 - **Hide Active Items** — hide the RestedXP Active Items / spells panel
 - **Strip Borders** — remove all border and edge textures from RestedXP frames (works on all themes including Dark Mode)
 - **RestedXP Opacity** — set overall transparency for all RestedXP frames
+- **Gold Waypoint Arrow** — replaces the RestedXP waypoint arrow with a gold arrowhead in Blizzard's HUD style (`Media/rxp_arrow.tga`); survives RXP theme changes
 
 ### Chat / Meter Toggle
 Three-state visibility cycle for the chat window and native Blizzard damage meter:
@@ -65,7 +66,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Installation
 
-1. Download the latest release zip
+1. Download the latest release zip (including the `Media` folder)
 2. Extract the `XpieHUD` folder into your `World of Warcraft/_retail_/Interface/AddOns/` directory
 3. Reload the UI or restart WoW
 
@@ -85,6 +86,7 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 ## Version History
 
+- **1.1.6**: Gold arrowhead replaces the RestedXP waypoint arrow (toggle in settings)
 - **1.1.5**: Fix world map `ADDON_ACTION_BLOCKED` (SetPropagateMouseClicks) and Objective Tracker secret-aura taint: Blizzard frames are now hidden by alpha + mouse instead of Hide(); minimap moved off-screen instead of hidden; chat shows while typing when hidden
 - **1.1.4**: RestedXP step frame background darkened to 30%
 - **1.1.3**: Quest entries keep their native icon with a small gold number on it (options keep the dimmed-icon number); tooltips at cursor while talking; fade Personal Resource Display and MicroButtonAndBagsBar; badge/hint offsets tuned in game
