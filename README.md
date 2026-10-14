@@ -87,6 +87,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.2.2**: Zygor title buttons now keep Zygor's own buttons with their art hidden and XpieHUD's gear / close art drawn on top (Zygor could repaint the previous restyle); header bar art overhangs both ends like the tracker's.
 - **3.2.1**: Zygor header bar sits on Zygor's own title bar; Zygor's menu and close buttons restyled as Blizzard's gold settings gear and red close button; title starts after the gear, vertically centred like the tracker's.
 - **3.2.0**: Panel looks: **Quest Tracker** (default; Objective Tracker background + gold header bar with a custom title, default "Leveling Guide") or **Tooltip**. Falls back to Tooltip with a one-time notice if the tracker art is missing.
 - **3.1.0**: Core renamed to `XpieHUD_Core`. New native background panel system in the core (Blizzard's dark tooltip NineSlice; opacity, border, padding) and a settings dropdown widget. Zygor extension gets a Style choice (XpieHUD / Original), an adjustable step box opacity, and a native background panel anchored to the guide window.

@@ -246,14 +246,20 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Title bar buttons (XpieHUD style)
--- Zygor's menu ("burger") and close buttons get Blizzard's native HUD
--- buttons and sit on the panel's gold header bar, laid over Zygor's title bar:
---   menu  -> the Damage Meter's gold settings gear (left)
---   close -> Blizzard's red close button (UIPanelCloseButton art), at the
---            Objective Tracker's header button size (right)
--- Zygor re-skins these on every ApplySkin, so the restyle is a persistent
--- post-hook; the Original style calls Zygor's ApplySkin and restores the
--- anchors it had.
+-- Zygor's menu ("burger") and close buttons stay the real buttons (clicks,
+-- menus, dragging, tooltips all Zygor's own). We only change how they look:
+--   * Zygor's own button art is hidden by alpha. Zygor repaints it with
+--     SetTexture/SetTexCoord and never touches alpha (except the highlight
+--     alpha in AssignTextures, which our ApplySkin post-hook re-hides).
+--   * Our art is extra textures created on the button, which Zygor's code
+--     doesn't know about, so it can't repaint them:
+--       menu  -> the Damage Meter's gold settings gear (left end of the bar)
+--       close -> Blizzard's red close button (UIPanelCloseButton art), at the
+--                Objective Tracker's header button size (right end)
+--     The HIGHLIGHT draw layer gives the native hover; mouse down/up hooks
+--     swap in the pressed art.
+-- The Original style hides our art and restores Zygor's alpha, size, anchors
+-- and frame level.
 -- ---------------------------------------------------------------------------
 local BUTTON_STYLES = {
     MenuSettingsButton = {
@@ -273,66 +279,100 @@ local BUTTON_STYLES = {
 local TITLE_LEFT  = 6 + 22 + 6
 local TITLE_RIGHT = 2 + 19 + 6
 
-local savedButtonPoints = {}   -- [button] = { {GetPoint(i)}, ... } before we moved it
-local hookedButtons = {}
+local skins = {}       -- [button] = { art, glow, spec, saved = { points, level } }
 
-local function ButtonsOn()
-    return XpieStyle() and module.panel ~= nil
+local function ZygorTextures(button)
+    return { button:GetNormalTexture(), button:GetPushedTexture(),
+             button:GetHighlightTexture(), button:GetDisabledTexture() }
 end
 
-local function StyleButton(button, spec)
-    if not savedButtonPoints[button] then
+local function SetZygorArtShown(button, shown)
+    for _, tx in ipairs(ZygorTextures(button)) do
+        if tx then tx:SetAlpha(shown and 1 or 0) end
+    end
+end
+
+local function GetSkin(button, spec)
+    local skin = skins[button]
+    if skin then return skin end
+
+    local art = button:CreateTexture(nil, "ARTWORK")
+    art:SetAllPoints()
+    art:SetAtlas(spec.normal)
+    local glow = button:CreateTexture(nil, "HIGHLIGHT")   -- shown on mouse-over
+    glow:SetAllPoints()
+    glow:SetAtlas(spec.hover)
+    glow:SetBlendMode(spec.hoverBlend)
+
+    art:Hide()    -- shown only while the XpieHUD style is on
+    glow:Hide()
+    skin = { art = art, glow = glow, spec = spec }
+    skins[button] = skin
+
+    button:HookScript("OnMouseDown", function(self)
+        if skin.on and self:IsEnabled() then art:SetAtlas(spec.pushed) end
+    end)
+    local function Release() art:SetAtlas(spec.normal) end
+    button:HookScript("OnMouseUp", Release)
+    button:HookScript("OnHide", Release)
+
+    -- Zygor re-skins its buttons on ApplySkin: hide its art and put the
+    -- button back where we want it.
+    if button.ApplySkin then
+        hooksecurefunc(button, "ApplySkin", function(self)
+            if skin.on then module:StyleTitleButton(self) end
+        end)
+    end
+    return skin
+end
+
+function module:StyleTitleButton(button)
+    local skin = skins[button]
+    local spec = skin.spec
+    if not skin.saved then
         local points = {}
         for i = 1, button:GetNumPoints() do points[i] = { button:GetPoint(i) } end
-        savedButtonPoints[button] = points
-        points.level = button:GetFrameLevel()
+        skin.saved = { points = points, level = button:GetFrameLevel() }
     end
-    button:SetNormalAtlas(spec.normal)
-    button:SetPushedAtlas(spec.pushed)
-    button:SetHighlightAtlas(spec.hover, spec.hoverBlend)
-    -- Undo Zygor's texture insets and tinting.
-    for _, tx in ipairs({ button:GetNormalTexture(), button:GetPushedTexture(), button:GetHighlightTexture() }) do
-        if tx then
-            tx:ClearAllPoints()
-            tx:SetAllPoints(button)
-            tx:SetVertexColor(1, 1, 1, 1)
-            tx:SetAlpha(1)
-        end
-    end
+    skin.on = true
+    SetZygorArtShown(button, false)
+    skin.art:SetAtlas(spec.normal)
+    skin.art:Show()
+    skin.glow:Show()
+
     button:SetSize(spec.size, spec.size)
     button:ClearAllPoints()
-    button:SetPoint(spec.point, module.panel.headerFrame, spec.point, spec.x, 0)
+    button:SetPoint(spec.point, self.panel.headerFrame, spec.point, spec.x, 0)
     -- Zygor pins the menu button to an absolute frame level; keep both
     -- buttons above our header bar.
-    local headerLevel = module.panel.headerFrame:GetFrameLevel()
+    local headerLevel = self.panel.headerFrame:GetFrameLevel()
     if button:GetFrameLevel() <= headerLevel then button:SetFrameLevel(headerLevel + 2) end
 end
 
-local function RestoreButton(button)
-    local points = savedButtonPoints[button]
-    if not points then return end
-    savedButtonPoints[button] = nil
-    if button.ApplySkin then button:ApplySkin() end   -- Zygor's own textures and size
-    button:ClearAllPoints()
-    for _, p in ipairs(points) do button:SetPoint(unpack(p)) end
-    if points.level then button:SetFrameLevel(points.level) end
+local function RestoreTitleButton(button)
+    local skin = skins[button]
+    if not (skin and skin.on) then return end
+    skin.on = false
+    skin.art:Hide()
+    skin.glow:Hide()
+    SetZygorArtShown(button, true)
+    if button.ApplySkin then button:ApplySkin() end   -- Zygor's own size and highlight alpha
+    local saved = skin.saved
+    if saved then
+        button:ClearAllPoints()
+        for _, p in ipairs(saved.points) do button:SetPoint(unpack(p)) end
+        if saved.level then button:SetFrameLevel(saved.level) end
+        skin.saved = nil
+    end
 end
 
 local function ApplyTitleButtons(controls)
+    local on = XpieStyle() and module.panel ~= nil
     for key, spec in pairs(BUTTON_STYLES) do
         local button = controls[key]
         if button then
-            if not hookedButtons[button] and button.ApplySkin then
-                hookedButtons[button] = true
-                hooksecurefunc(button, "ApplySkin", function(self)
-                    if ButtonsOn() then StyleButton(self, spec) end
-                end)
-            end
-            if ButtonsOn() then
-                StyleButton(button, spec)
-            else
-                RestoreButton(button)
-            end
+            GetSkin(button, spec)
+            if on then module:StyleTitleButton(button) else RestoreTitleButton(button) end
         end
     end
 end

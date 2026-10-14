@@ -104,11 +104,20 @@ function addon:CreatePanel()
     NineSliceUtil.ApplyLayoutByName(tooltipBody, TOOLTIP_LAYOUT)
 
     local headerFrame = CreateFrame("Frame", nil, frame)
+    -- Like ObjectiveTrackerContainerHeaderTemplate: a 32px-tall header frame
+    -- with the gold art drawn at its native size, centred. The tracker's frame
+    -- is 260 wide, so art wider than that overhangs both ends, and the
+    -- tracker's own buttons sit inside the art. We keep that overhang and
+    -- stretch the middle to the panel's width.
+    local TRACKER_HEADER_WIDTH = 260
+    headerFrame:SetHeight(32)
     local header = headerFrame:CreateTexture(nil, "BACKGROUND")
-    header:SetAllPoints()
-    header:SetAtlas(TRACKER_HEADER, false)   -- stretched to the panel's width
+    header:SetAtlas(TRACKER_HEADER, false)
     local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(TRACKER_HEADER)
-    headerFrame:SetHeight(info and info.height or 32)
+    local overhang = info and info.width and math.max(0, (info.width - TRACKER_HEADER_WIDTH) / 2) or 0
+    header:SetPoint("LEFT", -overhang, 0)
+    header:SetPoint("RIGHT", overhang, 0)
+    header:SetHeight(info and info.height or 32)
 
     -- Title in the Objective Tracker's own header font ("All Objectives"),
     -- placed like Blizzard's: left-aligned, 7px in, one line, truncated.
