@@ -381,6 +381,133 @@ end
 -- Module hooks (called by the core)
 -- ---------------------------------------------------------------------------
 -- ---------------------------------------------------------------------------
+-- Guide tabs (XpieHUD style): Blizzard's chat tabs (ChatTabArtTemplate in
+-- Blizzard_ChatFrameBase, 12.1.5), the HUD's own tab style.
+--   background  ChatFrameTab-BG{Left,Mid,Right}           40% unless selected
+--   selected    ChatFrameTab-Selected{Left,Mid,Right}     ADD, selected tab only
+--   hover       ChatFrameTab-Highlight{Left,Mid,Right}    ADD, HIGHLIGHT layer
+-- The chat art is drawn for 32px-tall tabs with 16px ends; Zygor's tabs are
+-- 20px, so the ends scale with the tab height. Zygor's own tab decoration,
+-- separators and backdrops are hidden (alpha / transparent backdrop) and
+-- Zygor's tab objects (ZGV.Tabs, methods via metatable) are hooked so new,
+-- moved and reselected tabs stay styled.
+-- ---------------------------------------------------------------------------
+local TAB_ART = "Interface\\ChatFrame\\ChatFrameTab-"
+local TAB_INACTIVE_ALPHA = 0.4   -- Blizzard's CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA
+local tabSkins = {}              -- [tab] = { bg, sel, hl (triples), font = {Zygor's} }
+
+local function MakeTabTriple(button, kind, layer, blend)
+    local triple = {}
+    for i, part in ipairs({ "Left", "Mid", "Right" }) do
+        local tx = button:CreateTexture(nil, layer, nil, 7)
+        tx:SetTexture(TAB_ART .. kind .. part)
+        if blend then tx:SetBlendMode(blend) end
+        tx:Hide()
+        triple[i] = tx
+    end
+    return triple
+end
+
+local function LayoutTabTriple(triple, button)
+    local h = button:GetHeight()
+    if not h or h <= 0 then h = 20 end
+    local w = math.floor(16 * h / 32 + 0.5)   -- chat tab ends: 16 wide at 32 tall
+    local left, mid, right = triple[1], triple[2], triple[3]
+    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -1, 0);   left:SetSize(w, h)
+    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, 0); right:SetSize(w, h)
+    mid:ClearAllPoints()
+    mid:SetPoint("TOPLEFT", left, "TOPRIGHT")
+    mid:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+end
+
+local function SetTripleShown(triple, shown, alpha)
+    for _, tx in ipairs(triple) do
+        tx:SetShown(shown)
+        if alpha then tx:SetAlpha(alpha) end
+    end
+end
+
+local function ZygorTabArt(tab)
+    return { tab.DecorLeft, tab.DecorMiddle, tab.DecorRight, tab.Separator }
+end
+
+local function StyleTab(tab)
+    local button = tab.Button
+    if not button then return end
+    local skin = tabSkins[tab]
+    if not skin then
+        skin = {
+            bg  = MakeTabTriple(button, "BG", "BACKGROUND"),
+            sel = MakeTabTriple(button, "Selected", "BACKGROUND", "ADD"),
+            hl  = MakeTabTriple(button, "Highlight", "HIGHLIGHT", "ADD"),
+        }
+        tabSkins[tab] = skin
+        HookChrome(button)
+        if tab.ButtonsContainer then HookChrome(tab.ButtonsContainer) end
+    end
+    skin.on = true
+
+    for _, tx in pairs(ZygorTabArt(tab)) do tx:SetAlpha(0) end
+    ClearBackdrop(button)
+    if tab.ButtonsContainer then ClearBackdrop(tab.ButtonsContainer) end
+
+    for _, triple in ipairs({ skin.bg, skin.sel, skin.hl }) do LayoutTabTriple(triple, button) end
+    local active = tab.isActive and true or false
+    SetTripleShown(skin.bg, true, active and 1 or TAB_INACTIVE_ALPHA)
+    SetTripleShown(skin.sel, active)
+    SetTripleShown(skin.hl, true)
+
+    if tab.Text then
+        if not skin.font then skin.font = { tab.Text:GetFont() } end
+        local _, size, flags = tab.Text:GetFont()
+        tab.Text:SetFont(STANDARD_TEXT_FONT, size or 12, flags or "")
+        local r, g, b = NORMAL_FONT_COLOR:GetRGB()
+        tab.Text:SetTextColor(r, g, b, active and 1 or 0.6)
+    end
+end
+
+local function RestoreTab(tab)
+    local skin = tabSkins[tab]
+    if not (skin and skin.on) then return end
+    skin.on = false
+    for _, triple in ipairs({ skin.bg, skin.sel, skin.hl }) do SetTripleShown(triple, false) end
+    for _, tx in pairs(ZygorTabArt(tab)) do tx:SetAlpha(1) end
+    if tab.Text and skin.font and skin.font[1] then
+        tab.Text:SetFont(skin.font[1], skin.font[2], skin.font[3] or "")
+    end
+end
+
+local restyling = false
+local function StyleAllTabs()
+    local Tabs = _G.ZGV and _G.ZGV.Tabs
+    if restyling or not (Tabs and Tabs.Pool) then return end
+    restyling = true
+    local on = XpieStyle()
+    local restored = false
+    for _, tab in pairs(Tabs.Pool) do
+        if on then
+            StyleTab(tab)
+        elseif tabSkins[tab] and tabSkins[tab].on then
+            RestoreTab(tab)
+            restored = true
+        end
+    end
+    -- Let Zygor repaint its own tab colours (backdrops, active tab, text).
+    if restored and Tabs.ApplySkin then Tabs:ApplySkin() end
+    restyling = false
+end
+
+local tabsHooked = false
+local function HookTabs()
+    local Tabs = _G.ZGV and _G.ZGV.Tabs
+    if tabsHooked or not Tabs then return end
+    tabsHooked = true
+    for _, method in ipairs({ "ApplySkin", "SetAsCurrent", "ReanchorTabs" }) do
+        if Tabs[method] then hooksecurefunc(Tabs, method, StyleAllTabs) end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Font (XpieHUD style)
 -- Zygor draws with its own Open Sans (ZGV.Font / ZGV.FontBold, from its
 -- localisation: Skins\OpenSans.TTF). The native UI and the Objective Tracker
@@ -464,6 +591,8 @@ function module:Apply()
         self.panel:SetActive(XpieStyle())
 
         if frame.Controls then ApplyTitleButtons(frame.Controls) end
+        HookTabs()
+        StyleAllTabs()
     end
 
     ApplyArrow()
