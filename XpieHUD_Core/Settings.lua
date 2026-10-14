@@ -9,6 +9,8 @@ local _, addon = ...
 --   page:Checkbox({ key = "strip", label = "...", description = "..." })
 --   page:CheckGrid("Fade while talking:", { { key = ..., label = ... }, ... })
 --   page:Slider({ key = ..., label = ..., description = ..., min, max, step, format })
+--   page:Dropdown({ key = ..., label = ..., values = function() return { { key, label }, ... } end })
+--   page:PanelStyle(function() return module.db.panel end)   -- opacity / border / padding
 --   page:Button("Reset", onClick)
 --
 -- bind = { get = function(key) end, set = function(key, value) end } connects
@@ -210,98 +212,25 @@ function PageMixin:Dropdown(opt)
     return dropdown
 end
 
--- Label + colour swatch. Value is { r, g, b, a }; Blizzard's colour picker
--- with an opacity slider; Cancel restores the previous colour.
-function PageMixin:Color(opt)
-    local page = self
-    local label = self.content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
-    label:SetPoint("TOPLEFT", 24, self.y - 4)
-    label:SetText(opt.label)
-
-    local swatch = CreateFrame("Button", nil, self.content)
-    swatch:SetPoint("TOPLEFT", 184, self.y)
-    swatch:SetSize(22, 22)
-    local edge = swatch:CreateTexture(nil, "BACKGROUND")
-    edge:SetAllPoints()
-    edge:SetColorTexture(0.6, 0.6, 0.6, 1)
-    local checker = swatch:CreateTexture(nil, "BORDER")   -- shows through low opacity
-    checker:SetPoint("TOPLEFT", 2, -2)
-    checker:SetPoint("BOTTOMRIGHT", -2, 2)
-    checker:SetColorTexture(0.15, 0.15, 0.15, 1)
-    local fill = swatch:CreateTexture(nil, "ARTWORK")
-    fill:SetPoint("TOPLEFT", 2, -2)
-    fill:SetPoint("BOTTOMRIGHT", -2, 2)
-
-    local valueText = self.content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
-    valueText:SetPoint("LEFT", swatch, "RIGHT", 10, 0)
-
-    local function Show(c)
-        fill:SetColorTexture(c.r, c.g, c.b, c.a)
-        valueText:SetFormattedText("opacity %d%%", math.floor(c.a * 100 + 0.5))
-    end
-
-    swatch:SetScript("OnClick", function()
-        local c = page:GetValue(opt)
-        local function Picked()
-            local r, g, b = ColorPickerFrame:GetColorRGB()
-            local a = ColorPickerFrame:GetColorAlpha()
-            page:SetValue(opt, { r = r, g = g, b = b, a = a })
-        end
-        ColorPickerFrame:SetupColorPickerAndShow({
-            r = c.r, g = c.g, b = c.b, opacity = c.a, hasOpacity = true,
-            swatchFunc = Picked, opacityFunc = Picked,
-            cancelFunc = function()
-                local r, g, b, a = ColorPickerFrame:GetPreviousValues()
-                page:SetValue(opt, { r = r, g = g, b = b, a = a })
-            end,
-        })
-    end)
-    self.refreshers[#self.refreshers + 1] = function() Show(page:GetValue(opt)) end
-    self.y = self.y - 32
-    return swatch
-end
-
--- Full background + border style editor for a style table from
--- XpieHUD.PANEL_DEFAULTS. getStyle() returns the live table (module.db.panel);
--- edits are written into it and the core re-applies everything.
+-- Background panel controls for a style table from XpieHUD.PANEL_DEFAULTS
+-- (opacity / border / padding). The look itself is fixed: Blizzard's dark
+-- tooltip panel. getStyle() returns the live table (module.db.panel).
 function PageMixin:PanelStyle(getStyle)
-    local function field(key)
-        return {
+    local function field(key, extra)
+        local o = {
             get = function() return getStyle()[key] end,
             set = function(value) getStyle()[key] = value; addon:SettingsChanged() end,
         }
-    end
-    local function opt(key, extra)
-        local o = field(key)
         for k, v in pairs(extra) do o[k] = v end
         return o
     end
 
-    self:Header("Background")
-    self:Dropdown(opt("bgTexture", { label = "Texture", values = function() return addon:GetBackgroundList() end }))
-    self:Color(opt("bgColor", { label = "Colour" }))
-    self:Space(6)
-
-    self:Header("Border")
-    self:Dropdown(opt("borderTexture", { label = "Texture", values = function() return addon:GetBorderList() end }))
-    self:Slider(opt("borderSize", { label = "Border Size", description = "Thickness of the border texture.", min = 1, max = 32, step = 1, format = "%d" }))
-    self:Color(opt("borderColor", { label = "Colour" }))
-    self:Space(6)
-
-    self:Header("Size & Layering")
-    self:Slider(opt("padX", { label = "Horizontal Padding", description = "Space between the guide window and the panel's left/right edges. Negative values pull the panel inside the window.", min = -20, max = 40, step = 1, format = "%d" }))
-    self:Slider(opt("padY", { label = "Vertical Padding", description = "Space between the guide window and the panel's top/bottom edges.", min = -20, max = 40, step = 1, format = "%d" }))
-    self:Dropdown(opt("strata", {
-        label = "Strata",
-        values = function()
-            local list = {}
-            for _, s in ipairs(addon:GetStrataList()) do
-                list[#list + 1] = { key = s, label = s == "AUTO" and "Auto (just behind the window)" or s }
-            end
-            return list
-        end,
-    }))
-    self:Button("Reset Panel Style", function()
+    self:Header("Background Panel")
+    self:Note("A native dark tooltip-style panel behind the window.")
+    self:Slider(field("opacity", { label = "Background Opacity", description = "How solid the panel's background is.", min = 0, max = 100, step = 5, format = "%d%%" }))
+    self:Checkbox(field("border", { label = "Show Border", description = "Blizzard's tooltip border around the panel." }))
+    self:Slider(field("padding", { label = "Padding", description = "Space between the window and the panel's edges. Negative values pull the panel inside the window.", min = -10, max = 30, step = 1, format = "%d" }))
+    self:Button("Reset Panel", function()
         local style = getStyle()
         wipe(style)
         addon.CopyDefaults(style, addon.PANEL_DEFAULTS)

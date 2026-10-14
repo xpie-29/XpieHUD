@@ -1,6 +1,8 @@
 # XpieHUD
 
-Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. No reskin of Blizzard's UI, no UI replacement: XpieHUD works alongside the default interface (and UI suites like Enhance QoL). Built for Retail (Midnight, 12.1.5).
+Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. Built for Retail (Midnight, 12.1.5).
+
+**Design principle: native, not customisable.** XpieHUD looks like Blizzard shipped it. It uses Blizzard's own art, layouts and colours, and offers only a few native-safe options (opacity, border on/off, spacing) rather than colour pickers and texture lists. It doesn't reskin or replace Blizzard's UI, and it works alongside the default interface and UI suites like Enhance QoL.
 
 The original all-in-one XpieHUD (chat/minimap/bar hiding, chat/meter toggle, RestedXP styling) is preserved on the [`archive/full-v1.2.2`](https://github.com/xpie-29/XpieHUD/tree/archive/full-v1.2.2) branch.
 
@@ -18,8 +20,8 @@ XpieHUD is one **core** addon plus optional **extensions**. Each extension is a 
 - **For players:** the quest window features below, and one settings panel for everything.
 - **For extensions** (the shared systems, so every extension looks and behaves the same way):
   - **Module registry**: an extension registers itself once and gets saved settings with defaults and upgrades, a settings sub-page, slash commands, and re-applying after settings changes or combat.
-  - **Background panels**: styled background frames an extension can anchor behind another addon's window. Background and border texture (built-in or SharedMedia), colour and opacity, border size, padding, and strata. The panel resizes with the window it's attached to.
-  - **Settings kit**: checkboxes, sliders, dropdowns, colour pickers with opacity, and a complete panel-style editor, all writing straight to the extension's settings.
+  - **Background panels**: native dark tooltip-style panels (Blizzard's own NineSlice tooltip layout and colours) that an extension anchors behind another addon's window. The panel resizes, fades and hides with that window. Players control opacity, border on/off and padding.
+  - **Settings kit**: checkboxes, sliders, dropdowns and a ready-made panel section (opacity, border, padding), all writing straight to the extension's settings.
   - **Quest window integration**: extensions can offer their frames to the quest window's "Guide Addons" fade.
 
 Writing an extension: see the `RegisterModule` notes at the top of `XpieHUD_Core/Core.lua` and the `CreatePanel` notes at the top of `XpieHUD_Core/Panels.lua`.
@@ -43,7 +45,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 Choose a **Style**:
 - **XpieHUD** (default):
   - Zygor's window background, borders, tab strip, toolbar and logo become transparent.
-  - An **XpieHUD background panel** sits behind the guide window and resizes with it. Its background, border, colours, opacity, padding and strata are all adjustable on the Zygor settings page.
+  - A **native dark panel** (Blizzard's tooltip style) sits behind the guide window and resizes with it. Adjustable: background opacity, border on/off, padding.
   - Step boxes keep Zygor's state colours (normal, complete, unavailable) at an adjustable opacity, without edges.
   - **Gold Waypoint Arrow** (can be turned off): a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`, 160 pre-rotated frames). The "you're here" marker is the same arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
 - **Original**: leaves Zygor's look completely alone. Disabling the extension in the AddOns list removes it entirely.
@@ -75,7 +77,6 @@ Choose a **Style**:
 
 - World of Warcraft Retail (Midnight, Interface 120105)
 - Optional: Zygor Guides Viewer, for the XpieHUD - Zygor Guides extension
-- Optional: any addon that loads LibSharedMedia-3.0 (e.g. Enhance QoL) adds its textures to the panel texture lists
 
 ## Notes
 
@@ -85,7 +86,7 @@ Choose a **Style**:
 
 ## Version History
 
-- **3.1.0**: Core renamed to `XpieHUD_Core`. New background panel system in the core (texture, colour, opacity, border, padding, strata; SharedMedia support) with settings dropdowns and colour pickers. Zygor extension gets a Style choice (XpieHUD / Original), an adjustable step box opacity, and an XpieHUD background panel anchored to the guide window.
+- **3.1.0**: Core renamed to `XpieHUD_Core`. New native background panel system in the core (Blizzard's dark tooltip NineSlice; opacity, border, padding) and a settings dropdown widget. Zygor extension gets a Style choice (XpieHUD / Original), an adjustable step box opacity, and a native background panel anchored to the guide window.
 - **3.0.0**: Modular layout: `XpieHUD` core (quest window, settings, module registry) plus the `XpieHUD_Zygor` extension addon. Each extension gets its own settings sub-page; Zygor settings migrate automatically.
 - **2.0.2**: Zygor "you're here" marker uses the gold arrowhead pointing down instead of Zygor's green arrow (it flickered in when flying over a waypoint)
 - **2.0.1**: `/xhud arrowdebug` diagnostic for the Zygor arrow

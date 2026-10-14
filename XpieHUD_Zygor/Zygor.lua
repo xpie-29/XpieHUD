@@ -2,7 +2,7 @@
 -- Zygor Guides Viewer integration. Style "xpiehud" (default):
 --   * transparent Zygor window chrome and logo
 --   * step boxes keep Zygor's state colours at an adjustable opacity, no edges
---   * an XpieHUD background panel (XpieHUD_Core Panels.lua) anchored to the window
+--   * a native dark tooltip-style panel (XpieHUD_Core Panels.lua) anchored behind the window
 --   * "XpieHUD Gold" arrow skin: our gold arrowhead as a native Zygor arrow skin
 -- Style "original" leaves Zygor's look alone.
 --
@@ -54,6 +54,10 @@ do
     if db and (db.enabled ~= nil or db.strip ~= nil) then
         db.style = (db.enabled ~= false and db.strip ~= false) and "xpiehud" or "original"
         db.enabled, db.strip = nil, nil
+    end
+    -- 3.1.0 briefly had a texture/colour panel editor; back to the native panel.
+    if db and type(db.panel) == "table" then
+        core:NormalizePanelStyle(db.panel)
     end
 end
 
@@ -315,7 +319,7 @@ function module:BuildSettings(page)
     page:Status(function()
         return C_AddOns.IsAddOnLoaded("ZygorGuidesViewer") and "" or "(Zygor Guides Viewer not loaded)"
     end)
-    page:Note("Choose Zygor's original look, or the XpieHUD style: transparent Zygor window and logo, gold waypoint arrow, and an XpieHUD background panel you can style below. Disable the XpieHUD_Zygor addon to remove this page completely.")
+    page:Note("Choose Zygor's original look, or the XpieHUD style: transparent Zygor window and logo, gold waypoint arrow, and a native dark panel behind the guide. Disable the XpieHUD_Zygor addon to remove this page completely.")
     page:Dropdown({
         key = "style", label = "Style",
         values = function()
