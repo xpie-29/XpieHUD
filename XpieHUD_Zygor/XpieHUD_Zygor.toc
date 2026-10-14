@@ -1,10 +1,10 @@
 ## Interface: 120105
 ## Title: XpieHUD - Zygor Guides
-## Notes: XpieHUD extension: transparent Zygor Guides window and a gold waypoint arrow skin.
+## Notes: XpieHUD extension: Zygor Guides in the XpieHUD style (transparent window, styled background panel, gold waypoint arrow) or its original look.
 ## Author: Jeremy / Xpie
-## Version: 3.0.0
-## Dependencies: XpieHUD
-## Group: XpieHUD
+## Version: 3.1.0
+## Dependencies: XpieHUD_Core
+## Group: XpieHUD_Core
 ## Category-enUS: User Interface
 
 Zygor.lua

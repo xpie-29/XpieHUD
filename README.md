@@ -1,25 +1,34 @@
 # XpieHUD
 
-A lightweight World of Warcraft addon: quality-of-life for Blizzard's **native** quest windows, with optional extensions that style guide addons to match. Built for Retail (Midnight, 12.1.5).
+Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. No reskin of Blizzard's UI, no UI replacement: XpieHUD works alongside the default interface (and UI suites like Enhance QoL). Built for Retail (Midnight, 12.1.5).
 
-General HUD hiding (chat, minimap, bars, menus) now lives in Enhance QoL. The original all-in-one XpieHUD, with visibility controls, the chat/meter toggle and the RestedXP integration, is preserved on the [`archive/full-v1.2.2`](https://github.com/xpie-29/XpieHUD/tree/archive/full-v1.2.2) branch.
+The original all-in-one XpieHUD (chat/minimap/bar hiding, chat/meter toggle, RestedXP styling) is preserved on the [`archive/full-v1.2.2`](https://github.com/xpie-29/XpieHUD/tree/archive/full-v1.2.2) branch.
 
-## Structure
+## System Overview
 
-XpieHUD is a core addon plus optional extensions. Each extension is its own addon folder, so you only load what you use, and each adds its own page under **XpieHUD** in the settings panel.
+XpieHUD is one **core** addon plus optional **extensions**. Each extension is a separate addon folder, so players load only what they use, and every extension adds its own page under **XpieHUD** in the settings panel.
 
-| Folder | What it is |
+| Addon (folder) | Role |
 |---|---|
-| `XpieHUD/` | Core: quest window features, settings panel, module registry |
-| `XpieHUD_Zygor/` | Extension: Zygor Guides styling and the gold waypoint arrow (requires XpieHUD) |
+| **XpieHUD Core** (`XpieHUD_Core/`) | Required. The quest window features, the settings panel, and the shared systems extensions build on. Useful on its own. |
+| **XpieHUD - Zygor Guides** (`XpieHUD_Zygor/`) | Optional extension, requires XpieHUD Core and Zygor Guides Viewer. Gives Zygor the XpieHUD style. |
 
-Writing an extension: see the `RegisterModule` notes at the top of `XpieHUD/Core.lua`.
+### What XpieHUD Core provides
+
+- **For players:** the quest window features below, and one settings panel for everything.
+- **For extensions** (the shared systems, so every extension looks and behaves the same way):
+  - **Module registry**: an extension registers itself once and gets saved settings with defaults and upgrades, a settings sub-page, slash commands, and re-applying after settings changes or combat.
+  - **Background panels**: styled background frames an extension can anchor behind another addon's window. Background and border texture (built-in or SharedMedia), colour and opacity, border size, padding, and strata. The panel resizes with the window it's attached to.
+  - **Settings kit**: checkboxes, sliders, dropdowns, colour pickers with opacity, and a complete panel-style editor, all writing straight to the extension's settings.
+  - **Quest window integration**: extensions can offer their frames to the quest window's "Guide Addons" fade.
+
+Writing an extension: see the `RegisterModule` notes at the top of `XpieHUD_Core/Core.lua` and the `CreatePanel` notes at the top of `XpieHUD_Core/Panels.lua`.
 
 ## Features
 
-### Quest Window
+### Quest Window (XpieHUD Core)
 Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. There's no reskin: the parchment and campaign themes stay exactly as Blizzard draws them.
-- **Hide UI While Talking**: fades action bars, unit frames (including the Personal Resource Display), the objective tracker, chat, the minimap, the Zygor guide and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
+- **Hide UI While Talking**: fades action bars, unit frames (including the Personal Resource Display), the objective tracker, chat, the minimap, guide addons and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
   - Frames from other addons can be added by name: run `/xhud questscan`, talk to an NPC, and close the window to read what's still visible, then `/xhud questhide <FrameName>`.
 - **Tooltips at Cursor**: while talking, tooltips that normally sit in the screen corner appear at the mouse (can be turned off).
 - **Position and Size**: drag a window's title bar to move it. A size slider (50–150%) sits in settings. Both are saved and re-applied every time the window opens.
@@ -30,10 +39,14 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
   - All other keys pass through, so movement and camera still work. PvP quests and quests that cost gold still need a click.
 - **Number Badges & Key Hints**: quests keep their native icon (!, ?, daily, campaign...) with a small number on it; gossip options show the number over a dimmed icon; reward choices get a number in the corner. Also adds small "Space" / "Esc" hints beside the window's own buttons (can be turned off).
 
-### Zygor Guides (`XpieHUD_Zygor`)
-- **Strip Backgrounds & Borders**: transparent Zygor window background, borders, tab strip and toolbar, title logo hidden; step boxes keep Zygor's state colours (normal, complete, unavailable) at 50% opacity without edges. Survives Zygor skin changes.
-- **Gold Waypoint Arrow**: a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`: 160 pre-rotated frames). The "you're here" marker is the gold arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
-- **Enable Zygor Integration** switch: unticking puts back everything XpieHUD changed and leaves Zygor alone. Disabling the `XpieHUD_Zygor` addon removes it completely.
+### Zygor Guides (XpieHUD - Zygor Guides)
+Choose a **Style**:
+- **XpieHUD** (default):
+  - Zygor's window background, borders, tab strip, toolbar and logo become transparent.
+  - An **XpieHUD background panel** sits behind the guide window and resizes with it. Its background, border, colours, opacity, padding and strata are all adjustable on the Zygor settings page.
+  - Step boxes keep Zygor's state colours (normal, complete, unavailable) at an adjustable opacity, without edges.
+  - **Gold Waypoint Arrow** (can be turned off): a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`, 160 pre-rotated frames). The "you're here" marker is the same arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
+- **Original**: leaves Zygor's look completely alone. Disabling the extension in the AddOns list removes it entirely.
 
 ---
 
@@ -53,15 +66,16 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 ## Installation
 
 1. Download the latest release zip
-2. Copy the `XpieHUD` folder, plus any extension folders you want (e.g. `XpieHUD_Zygor`), into `World of Warcraft/_retail_/Interface/AddOns/`. Each must sit directly in `AddOns`, not inside another folder.
+2. Copy `XpieHUD_Core`, plus any extension folders you want (e.g. `XpieHUD_Zygor`), into `World of Warcraft/_retail_/Interface/AddOns/`. Each must sit directly in `AddOns`, not inside another folder.
 3. Restart WoW (a `/reload` is enough when no files were added)
 
-Upgrading from 2.x: delete the old `AddOns/XpieHUD` folder first (its `Media` folder and files moved). Your settings carry over, including Zygor's.
+**Upgrading from 3.0.x or earlier:** delete the old `AddOns/XpieHUD` folder. The core is now `XpieHUD_Core`, so WoW saves its settings in a new file. To keep your settings, with the game closed, rename `WTF/Account/<your account>/SavedVariables/XpieHUD.lua` to `XpieHUD_Core.lua`. Zygor settings convert to the new Style choice automatically.
 
 ## Requirements
 
 - World of Warcraft Retail (Midnight, Interface 120105)
-- Optional: Zygor Guides Viewer, for the `XpieHUD_Zygor` extension
+- Optional: Zygor Guides Viewer, for the XpieHUD - Zygor Guides extension
+- Optional: any addon that loads LibSharedMedia-3.0 (e.g. Enhance QoL) adds its textures to the panel texture lists
 
 ## Notes
 
@@ -71,6 +85,7 @@ Upgrading from 2.x: delete the old `AddOns/XpieHUD` folder first (its `Media` fo
 
 ## Version History
 
+- **3.1.0**: Core renamed to `XpieHUD_Core`. New background panel system in the core (texture, colour, opacity, border, padding, strata; SharedMedia support) with settings dropdowns and colour pickers. Zygor extension gets a Style choice (XpieHUD / Original), an adjustable step box opacity, and an XpieHUD background panel anchored to the guide window.
 - **3.0.0**: Modular layout: `XpieHUD` core (quest window, settings, module registry) plus the `XpieHUD_Zygor` extension addon. Each extension gets its own settings sub-page; Zygor settings migrate automatically.
 - **2.0.2**: Zygor "you're here" marker uses the gold arrowhead pointing down instead of Zygor's green arrow (it flickered in when flying over a waypoint)
 - **2.0.1**: `/xhud arrowdebug` diagnostic for the Zygor arrow

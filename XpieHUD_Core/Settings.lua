@@ -80,7 +80,7 @@ function PageMixin:Status(getText)
 end
 
 function PageMixin:Checkbox(opt)
-    local bind = self.bind
+    local page = self
     local check = CreateFrame("CheckButton", nil, self.content, "UICheckButtonTemplate")
     check:SetPoint("TOPLEFT", 20, self.y)
     check:SetSize(26, 26)
@@ -95,15 +95,15 @@ function PageMixin:Checkbox(opt)
     description:SetJustifyH("LEFT")
     description:SetText(opt.description)
 
-    check:SetScript("OnClick", function(btn) bind.set(opt.key, btn:GetChecked()) end)
-    self.refreshers[#self.refreshers + 1] = function() check:SetChecked(bind.get(opt.key)) end
+    check:SetScript("OnClick", function(btn) page:SetValue(opt, btn:GetChecked()) end)
+    self.refreshers[#self.refreshers + 1] = function() check:SetChecked(page:GetValue(opt)) end
     self.y = self.y - 52
     return check
 end
 
 -- Compact two-column list of label-only checkboxes.
 function PageMixin:CheckGrid(label, opts)
-    local bind = self.bind
+    local page = self
     local caption = self.content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
     caption:SetPoint("TOPLEFT", 48, self.y + 6)
     caption:SetText(label)
@@ -117,8 +117,8 @@ function PageMixin:CheckGrid(label, opts)
         local text = check:CreateFontString(nil, "ARTWORK", "GameFontHighlight")
         text:SetPoint("LEFT", check, "RIGHT", 4, 1)
         text:SetText(opt.label)
-        check:SetScript("OnClick", function(btn) bind.set(opt.key, btn:GetChecked()) end)
-        self.refreshers[#self.refreshers + 1] = function() check:SetChecked(bind.get(opt.key)) end
+        check:SetScript("OnClick", function(btn) page:SetValue(opt, btn:GetChecked()) end)
+        self.refreshers[#self.refreshers + 1] = function() check:SetChecked(page:GetValue(opt)) end
         if column == 1 or index == #opts then
             self.y = self.y - 28
         end
@@ -127,7 +127,7 @@ function PageMixin:CheckGrid(label, opts)
 end
 
 function PageMixin:Slider(cfg)
-    local page, bind = self, self.bind
+    local page = self
     local label = self.content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
     label:SetPoint("TOPLEFT", 24, self.y)
     label:SetText(cfg.label)
@@ -154,11 +154,11 @@ function PageMixin:Slider(cfg)
     slider:SetScript("OnValueChanged", function(_, value)
         value = math.floor((value / cfg.step) + 0.5) * cfg.step
         valueText:SetFormattedText(cfg.format, value)
-        if not page.refreshing and bind.get(cfg.key) ~= value then
-            bind.set(cfg.key, value)
+        if not page.refreshing and page:GetValue(cfg) ~= value then
+            page:SetValue(cfg, value)
         end
     end)
-    self.refreshers[#self.refreshers + 1] = function() slider:SetValue(bind.get(cfg.key) or cfg.min) end
+    self.refreshers[#self.refreshers + 1] = function() slider:SetValue(page:GetValue(cfg) or cfg.min) end
     self.y = self.y - 82
     return slider
 end
@@ -171,6 +171,142 @@ function PageMixin:Button(text, onClick)
     button:SetScript("OnClick", onClick)
     self.y = self.y - 34
     return button
+end
+
+-- A control reads/writes through opt.get/opt.set when given (nested settings
+-- such as a panel style), otherwise through the page's bind with opt.key.
+function PageMixin:GetValue(opt)
+    if opt.get then return opt.get() end
+    return self.bind.get(opt.key)
+end
+
+function PageMixin:SetValue(opt, value)
+    if opt.set then return opt.set(value) end
+    self.bind.set(opt.key, value)
+end
+
+-- Label + dropdown. opt.values() returns { { key = ..., label = ... }, ... }.
+function PageMixin:Dropdown(opt)
+    local page = self
+    local label = self.content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 24, self.y - 4)
+    label:SetWidth(150)
+    label:SetJustifyH("LEFT")
+    label:SetText(opt.label)
+
+    local dropdown = CreateFrame("DropdownButton", nil, self.content, "WowStyle1DropdownTemplate")
+    dropdown:SetPoint("TOPLEFT", 180, self.y)
+    dropdown:SetWidth(opt.width or 220)
+    dropdown:SetupMenu(function(_, root)
+        root:SetScrollMode(20 * 20)   -- long SharedMedia lists scroll
+        for _, entry in ipairs(opt.values()) do
+            root:CreateRadio(entry.label,
+                function() return page:GetValue(opt) == entry.key end,
+                function() page:SetValue(opt, entry.key) end)
+        end
+    end)
+    self.refreshers[#self.refreshers + 1] = function() dropdown:GenerateMenu() end
+    self.y = self.y - 34
+    return dropdown
+end
+
+-- Label + colour swatch. Value is { r, g, b, a }; Blizzard's colour picker
+-- with an opacity slider; Cancel restores the previous colour.
+function PageMixin:Color(opt)
+    local page = self
+    local label = self.content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 24, self.y - 4)
+    label:SetText(opt.label)
+
+    local swatch = CreateFrame("Button", nil, self.content)
+    swatch:SetPoint("TOPLEFT", 184, self.y)
+    swatch:SetSize(22, 22)
+    local edge = swatch:CreateTexture(nil, "BACKGROUND")
+    edge:SetAllPoints()
+    edge:SetColorTexture(0.6, 0.6, 0.6, 1)
+    local checker = swatch:CreateTexture(nil, "BORDER")   -- shows through low opacity
+    checker:SetPoint("TOPLEFT", 2, -2)
+    checker:SetPoint("BOTTOMRIGHT", -2, 2)
+    checker:SetColorTexture(0.15, 0.15, 0.15, 1)
+    local fill = swatch:CreateTexture(nil, "ARTWORK")
+    fill:SetPoint("TOPLEFT", 2, -2)
+    fill:SetPoint("BOTTOMRIGHT", -2, 2)
+
+    local valueText = self.content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+    valueText:SetPoint("LEFT", swatch, "RIGHT", 10, 0)
+
+    local function Show(c)
+        fill:SetColorTexture(c.r, c.g, c.b, c.a)
+        valueText:SetFormattedText("opacity %d%%", math.floor(c.a * 100 + 0.5))
+    end
+
+    swatch:SetScript("OnClick", function()
+        local c = page:GetValue(opt)
+        local function Picked()
+            local r, g, b = ColorPickerFrame:GetColorRGB()
+            local a = ColorPickerFrame:GetColorAlpha()
+            page:SetValue(opt, { r = r, g = g, b = b, a = a })
+        end
+        ColorPickerFrame:SetupColorPickerAndShow({
+            r = c.r, g = c.g, b = c.b, opacity = c.a, hasOpacity = true,
+            swatchFunc = Picked, opacityFunc = Picked,
+            cancelFunc = function()
+                local r, g, b, a = ColorPickerFrame:GetPreviousValues()
+                page:SetValue(opt, { r = r, g = g, b = b, a = a })
+            end,
+        })
+    end)
+    self.refreshers[#self.refreshers + 1] = function() Show(page:GetValue(opt)) end
+    self.y = self.y - 32
+    return swatch
+end
+
+-- Full background + border style editor for a style table from
+-- XpieHUD.PANEL_DEFAULTS. getStyle() returns the live table (module.db.panel);
+-- edits are written into it and the core re-applies everything.
+function PageMixin:PanelStyle(getStyle)
+    local function field(key)
+        return {
+            get = function() return getStyle()[key] end,
+            set = function(value) getStyle()[key] = value; addon:SettingsChanged() end,
+        }
+    end
+    local function opt(key, extra)
+        local o = field(key)
+        for k, v in pairs(extra) do o[k] = v end
+        return o
+    end
+
+    self:Header("Background")
+    self:Dropdown(opt("bgTexture", { label = "Texture", values = function() return addon:GetBackgroundList() end }))
+    self:Color(opt("bgColor", { label = "Colour" }))
+    self:Space(6)
+
+    self:Header("Border")
+    self:Dropdown(opt("borderTexture", { label = "Texture", values = function() return addon:GetBorderList() end }))
+    self:Slider(opt("borderSize", { label = "Border Size", description = "Thickness of the border texture.", min = 1, max = 32, step = 1, format = "%d" }))
+    self:Color(opt("borderColor", { label = "Colour" }))
+    self:Space(6)
+
+    self:Header("Size & Layering")
+    self:Slider(opt("padX", { label = "Horizontal Padding", description = "Space between the guide window and the panel's left/right edges. Negative values pull the panel inside the window.", min = -20, max = 40, step = 1, format = "%d" }))
+    self:Slider(opt("padY", { label = "Vertical Padding", description = "Space between the guide window and the panel's top/bottom edges.", min = -20, max = 40, step = 1, format = "%d" }))
+    self:Dropdown(opt("strata", {
+        label = "Strata",
+        values = function()
+            local list = {}
+            for _, s in ipairs(addon:GetStrataList()) do
+                list[#list + 1] = { key = s, label = s == "AUTO" and "Auto (just behind the window)" or s }
+            end
+            return list
+        end,
+    }))
+    self:Button("Reset Panel Style", function()
+        local style = getStyle()
+        wipe(style)
+        addon.CopyDefaults(style, addon.PANEL_DEFAULTS)
+        addon:SettingsChanged()
+    end)
 end
 
 function PageMixin:Space(px)

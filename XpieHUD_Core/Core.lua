@@ -35,13 +35,23 @@ local OBSOLETE_KEYS = {
     "hideChatMeterButton", "meterFrameName", "chatMeterButtonPos", "questTrackerWidth",
 }
 
+-- Fill missing settings from defaults. Tables (e.g. a module's panel style)
+-- are deep-copied, and merged into existing tables, so new style fields added
+-- in later versions appear without overwriting the player's choices.
 local function CopyDefaults(db, defaults)
     for key, value in pairs(defaults) do
-        if db[key] == nil then
+        if type(value) == "table" then
+            if type(db[key]) ~= "table" then
+                db[key] = CopyTable(value)
+            else
+                CopyDefaults(db[key], value)
+            end
+        elseif db[key] == nil then
             db[key] = value
         end
     end
 end
+addon.CopyDefaults = CopyDefaults
 
 function addon:Print(message)
     if DEFAULT_CHAT_FRAME then
@@ -52,7 +62,7 @@ end
 -- ---------------------------------------------------------------------------
 -- Modules
 -- Each extension is its own addon folder (XpieHUD_Zygor, ...) with
--- "## Dependencies: XpieHUD", so it loads after the core and only when the
+-- "## Dependencies: XpieHUD_Core", so it loads after the core and only when the
 -- player has it enabled. It describes itself with RegisterModule:
 --
 --   local module = XpieHUD:RegisterModule("zygor", {
@@ -91,6 +101,12 @@ local function ModuleSetOption(module, key, value)
     end
     addon:ApplyAll()
     addon:RefreshSettings()
+end
+
+-- Called after a module edits a nested setting in place (e.g. its panel style).
+function addon:SettingsChanged()
+    self:ApplyAll()
+    self:RefreshSettings()
 end
 
 function addon:RegisterModule(id, module)

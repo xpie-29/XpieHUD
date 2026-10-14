@@ -1,8 +1,10 @@
 -- Zygor.lua  (XpieHUD_Zygor module)
--- Zygor Guides Viewer integration:
---   * strip the viewer window's backgrounds and borders
---   * step boxes keep Zygor's state colours at 50% opacity, without edges
+-- Zygor Guides Viewer integration. Style "xpiehud" (default):
+--   * transparent Zygor window chrome and logo
+--   * step boxes keep Zygor's state colours at an adjustable opacity, no edges
+--   * an XpieHUD background panel (XpieHUD_Core Panels.lua) anchored to the window
 --   * "XpieHUD Gold" arrow skin: our gold arrowhead as a native Zygor arrow skin
+-- Style "original" leaves Zygor's look alone.
 --
 -- Zygor internals used (checked against Zygor 9.6 retail, 12.1.5):
 --   _G.ZGV, ZGV.Frame (ZygorGuidesViewerFrame, skin "default")
@@ -18,7 +20,6 @@
 
 local core = XpieHUD
 
-local STEP_BG_ALPHA = 0.5                   -- step box tint (readable on dark ground)
 local SKIN_ID       = "XpieHUD"
 local SKIN_NAME     = "XpieHUD Gold"
 local MEDIA_DIR     = "Interface\\AddOns\\XpieHUD_Zygor\\Media\\"
@@ -26,9 +27,12 @@ local MEDIA_DIR     = "Interface\\AddOns\\XpieHUD_Zygor\\Media\\"
 local module = core:RegisterModule("zygor", {
     title = "Zygor Guides",
     defaults = {
-        enabled   = true,   -- master switch (unticking restores Zygor's own look)
-        strip     = true,   -- transparent window chrome, step boxes at 50%
-        goldArrow = true,   -- "XpieHUD Gold" arrow skin
+        -- "xpiehud": transparent Zygor chrome + logo, gold arrow, XpieHUD
+        --            background panel. "original": leave Zygor's look alone.
+        style     = "xpiehud",
+        goldArrow = true,   -- "XpieHUD Gold" arrow skin (XpieHUD style)
+        stepAlpha = 50,     -- step box tint, % (XpieHUD style)
+        panel     = core.PANEL_DEFAULTS,   -- deep-copied into the saved settings
         -- prevArrowSkin: the Zygor arrow skin to restore when goldArrow is off
     },
     -- 2.x kept these at the top level of XpieHUDDB; moved in on first run.
@@ -44,12 +48,19 @@ local module = core:RegisterModule("zygor", {
     end,
 })
 
-local function Enabled()
-    return module.db and module.db.enabled and _G.ZGV ~= nil
+-- 2.x / 3.0 "enabled" + "strip" switches became the single style choice.
+do
+    local db = module.db
+    if db and (db.enabled ~= nil or db.strip ~= nil) then
+        db.style = (db.enabled ~= false and db.strip ~= false) and "xpiehud" or "original"
+        db.enabled, db.strip = nil, nil
+    end
 end
-local function StripOn()
-    return Enabled() and module.db.strip
+
+local function XpieStyle()
+    return module.db and module.db.style == "xpiehud" and _G.ZGV ~= nil
 end
+local StripOn = XpieStyle
 
 -- ---------------------------------------------------------------------------
 -- Backdrop helpers
@@ -107,7 +118,7 @@ local function StyleStep(step)
     if clearing or not StripOn() or not step.GetBackdropColor then return end
     clearing = true
     local r, g, b = step:GetBackdropColor()
-    if r then step:SetBackdropColor(r, g, b, STEP_BG_ALPHA) end
+    if r then step:SetBackdropColor(r, g, b, (module.db.stepAlpha or 50) / 100) end
     local br, bg, bb = step:GetBackdropBorderColor()
     if br then step:SetBackdropBorderColor(br, bg, bb, 0) end
     clearing = false
@@ -215,7 +226,7 @@ local function ApplyArrow()
     end
 
     local db = module.db
-    local want = Enabled() and db.goldArrow
+    local want = XpieStyle() and db.goldArrow
     local current = profile.arrowskin
     if want and current ~= SKIN_ID then
         db.prevArrowSkin = current
@@ -266,6 +277,13 @@ function module:Apply()
             frame:ApplySkin()
             if ZGV.UpdateFrame then ZGV:UpdateFrame(true) end
         end
+
+        -- XpieHUD background panel, anchored to the guide window so it
+        -- resizes with it (Zygor's own window background is transparent).
+        self.panel = self.panel or core:CreatePanel()
+        self.panel:Attach(frame)
+        self.panel:SetStyle(self.db.panel)
+        self.panel:SetActive(XpieStyle())
     end
 
     ApplyArrow()
@@ -281,9 +299,11 @@ function module:OnLogin()
     end
 end
 
--- Frames the quest window's "Guide Addons" fade group may fade.
+-- Frames the quest window's "Guide Addons" fade group may fade. Independent of
+-- the style: fading is the quest window's job (its own checkbox), and the
+-- background panel lives in ZygorGuidesViewerFrameMaster so it fades too.
 function module:GetFadeFrames()
-    if not Enabled() then return {} end
+    if not _G.ZGV then return {} end
     local list = {}
     for _, name in ipairs({ "ZygorGuidesViewerFrameMaster", "ZygorGuidesViewerPointer_ArrowCtrl" }) do
         if _G[name] then list[#list + 1] = _G[name] end
@@ -295,10 +315,24 @@ function module:BuildSettings(page)
     page:Status(function()
         return C_AddOns.IsAddOnLoaded("ZygorGuidesViewer") and "" or "(Zygor Guides Viewer not loaded)"
     end)
-    page:Note("Styles Zygor Guides Viewer to match the native UI. Disable the XpieHUD_Zygor addon to remove this page completely.")
-    page:Checkbox({ key = "enabled",   label = "Enable Zygor Integration",    description = "Unticking puts back everything XpieHUD changed and leaves Zygor alone." })
-    page:Checkbox({ key = "strip",     label = "Strip Backgrounds & Borders", description = "Transparent Zygor window background and borders; step boxes keep their colours at 50% opacity; title logo hidden." })
-    page:Checkbox({ key = "goldArrow", label = "Gold Waypoint Arrow",         description = "Use the XpieHUD gold arrowhead as Zygor's arrow skin (also selectable as \"XpieHUD Gold\" in Zygor's own options)." })
+    page:Note("Choose Zygor's original look, or the XpieHUD style: transparent Zygor window and logo, gold waypoint arrow, and an XpieHUD background panel you can style below. Disable the XpieHUD_Zygor addon to remove this page completely.")
+    page:Dropdown({
+        key = "style", label = "Style",
+        values = function()
+            return {
+                { key = "xpiehud",  label = "XpieHUD" },
+                { key = "original", label = "Original (leave Zygor's look alone)" },
+            }
+        end,
+    })
+    page:Space(6)
+
+    page:Header("XpieHUD Style")
+    page:Checkbox({ key = "goldArrow", label = "Gold Waypoint Arrow", description = "Use the XpieHUD gold arrowhead as Zygor's arrow skin (also selectable as \"XpieHUD Gold\" in Zygor's own options)." })
+    page:Slider({ key = "stepAlpha", label = "Step Box Opacity", description = "Tint behind each guide step. Zygor's colours are kept (dark normal, green complete, red unavailable).", min = 0, max = 100, step = 5, format = "%d%%" })
+    page:Space(6)
+
+    page:PanelStyle(function() return module.db.panel end)
 end
 
 -- ---------------------------------------------------------------------------
