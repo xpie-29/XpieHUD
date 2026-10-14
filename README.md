@@ -1,5 +1,6 @@
 # XpieHUD
-n<p align="center"><img src="Media/XpieHUD-logo.png" alt="XpieHUD" width="200"></p>
+
+<p align="center"><img src="Media/XpieHUD-logo.png" alt="XpieHUD" width="200"></p>
 
 Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. Built for Retail (Midnight, 12.1.5) and WoW Forever (1.60).
 
