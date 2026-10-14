@@ -287,6 +287,14 @@ local BUTTON_STYLES = {
         hover  = "common-icon-forwardarrow", hoverBlend = "ADD",
         keepPosition = true, artW = 8, artH = 13,
     },
+    -- Add-tab "+": the Objective Tracker's own + button (sibling of the
+    -- section header's "−"), at its native atlas size, tracker yellow hover.
+    TabsAddButton = {
+        normal = "ui-questtrackerbutton-secondary-expand",
+        pushed = "ui-questtrackerbutton-secondary-expand-pressed",
+        hover  = "ui-questtrackerbutton-yellow-highlight", hoverBlend = "ADD",
+        keepPosition = true, atlasSize = true,
+    },
 }
 -- Title starts after the gear and stops before the close button.
 local TITLE_LEFT  = 4 + 27 + 5
@@ -312,7 +320,15 @@ local function GetSkin(button, spec)
     local art = button:CreateTexture(nil, "ARTWORK")
     local function Place(tx)   -- fill the button, or a fixed-size icon centred on it
         tx:ClearAllPoints()
-        if spec.artW then tx:SetPoint("CENTER"); tx:SetSize(spec.artW, spec.artH) else tx:SetAllPoints() end
+        if spec.atlasSize then
+            local info = C_Texture.GetAtlasInfo(spec.normal)
+            tx:SetPoint("CENTER")
+            tx:SetSize(info and info.width or 16, info and info.height or 16)
+        elseif spec.artW then
+            tx:SetPoint("CENTER"); tx:SetSize(spec.artW, spec.artH)
+        else
+            tx:SetAllPoints()
+        end
     end
     Place(art)
     art:SetAtlas(spec.normal)
@@ -396,8 +412,63 @@ local function ApplyTitleButtons(controls)
 end
 
 -- ---------------------------------------------------------------------------
--- Module hooks (called by the core)
+-- Gold glyphs (XpieHUD style)
+-- Blizzard has no native "share guide", "report step", "more" (…) or
+-- "more tabs" (») icons, so these keep Zygor's simple glyphs, tinted
+-- Blizzard's gold like the tracker's header controls. Only white is tinted:
+-- Zygor colours the share button green during a party guide sync
+-- (Sync:UpdateButtonColor), and that status stays visible.
 -- ---------------------------------------------------------------------------
+local GOLD_GLYPHS = { "GuideShareButton", "ReportStep", "MenuAdditionalButton", "TabsMoreButton" }
+local goldHooked = {}
+
+local function IsWhite(tx)
+    local r, g, b = tx:GetVertexColor()
+    return r and r > 0.95 and g > 0.95 and b > 0.95
+end
+
+local function IsGold(tx)
+    local r, g, b = tx:GetVertexColor()
+    local gr, gg, gb = NORMAL_FONT_COLOR:GetRGB()
+    return r and math.abs(r - gr) < 0.02 and math.abs(g - gg) < 0.02 and math.abs(b - gb) < 0.02
+end
+
+local function TintGlyph(button)
+    local on = XpieStyle()
+    for _, tx in ipairs({ button:GetNormalTexture(), button:GetPushedTexture() }) do
+        if tx then
+            if on and IsWhite(tx) then
+                tx:SetVertexColor(NORMAL_FONT_COLOR:GetRGB())
+            elseif not on and IsGold(tx) then
+                tx:SetVertexColor(1, 1, 1, 1)
+            end
+        end
+    end
+end
+
+local function ApplyGoldGlyphs(controls)
+    if not controls then return end
+    for _, key in ipairs(GOLD_GLYPHS) do
+        local button = controls[key]
+        if button then
+            if not goldHooked[button] and button.ApplySkin then
+                goldHooked[button] = true
+                hooksecurefunc(button, "ApplySkin", TintGlyph)
+            end
+            TintGlyph(button)
+        end
+    end
+    -- Re-tint after Zygor recolours the share button for sync status.
+    local Sync = _G.ZGV and _G.ZGV.Sync
+    if Sync and Sync.UpdateButtonColor and not goldHooked[Sync] then
+        goldHooked[Sync] = true
+        hooksecurefunc(Sync, "UpdateButtonColor", function()
+            local share = controls.GuideShareButton
+            if share then TintGlyph(share) end
+        end)
+    end
+end
+
 -- ---------------------------------------------------------------------------
 -- Guide tabs (XpieHUD style): Blizzard's chat tabs (ChatTabArtTemplate in
 -- Blizzard_ChatFrameBase, 12.1.5), the HUD's own tab style.
@@ -631,6 +702,9 @@ local function ApplyToolbarHeader(frame, panel)
     sectionHeader.holder:SetShown(XpieStyle())
 end
 
+-- ---------------------------------------------------------------------------
+-- Module hooks (called by the core)
+-- ---------------------------------------------------------------------------
 local frameHooked = false
 local stripped = false
 
@@ -686,6 +760,7 @@ function module:Apply()
         self.panel:SetActive(XpieStyle())
 
         if frame.Controls then ApplyTitleButtons(frame.Controls) end
+        ApplyGoldGlyphs(frame.Controls)
         HookTabs()
         StyleAllTabs()
         ApplyTabLine(frame, self.panel)
