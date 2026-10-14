@@ -1,6 +1,6 @@
 # XpieHUD
 
-Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. Built for Retail (Midnight, 12.1.5).
+Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. Built for Retail (Midnight, 12.1.5) and WoW Forever (1.60).
 
 **Design principle: native, not customisable.** XpieHUD looks like Blizzard shipped it. It uses Blizzard's own art, layouts and colours, and offers only a few native-safe options (opacity, border on/off, spacing) rather than colour pickers and texture lists. It doesn't reskin or replace Blizzard's UI, and it works alongside the default interface and UI suites like Enhance QoL.
 
@@ -71,14 +71,14 @@ Choose a **Style**:
 ## Installation
 
 1. Download the latest release zip
-2. Copy `XpieHUD_Core`, plus any extension folders you want (e.g. `XpieHUD_Zygor`), into `World of Warcraft/_retail_/Interface/AddOns/`. Each must sit directly in `AddOns`, not inside another folder.
+2. Copy `XpieHUD_Core`, plus any extension folders you want (e.g. `XpieHUD_Zygor`), into `World of Warcraft/_retail_/Interface/AddOns/` (or `_classic_beta_/Interface/AddOns/` for the WoW Forever beta). Each must sit directly in `AddOns`, not inside another folder.
 3. Restart WoW (a `/reload` is enough when no files were added)
 
 **Upgrading from 3.0.x or earlier:** delete the old `AddOns/XpieHUD` folder. The core is now `XpieHUD_Core`, so WoW saves its settings in a new file. To keep your settings, with the game closed, rename `WTF/Account/<your account>/SavedVariables/XpieHUD.lua` to `XpieHUD_Core.lua`. Zygor settings convert to the new Style choice automatically.
 
 ## Requirements
 
-- World of Warcraft Retail (Midnight, Interface 120105)
+- World of Warcraft Retail (Midnight, Interface 120105) or WoW Forever (Interface 16001). One download covers both.
 - Optional: Zygor Guides Viewer, for the XpieHUD - Zygor Guides extension
 
 ## Notes
@@ -89,6 +89,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.4.5**: WoW Forever support (Interface 16001). Forever runs the retail UI, so the quest window and Zygor styling work unchanged; both addons now list both interface versions.
 - **3.4.4**: Tab art trimmed 4px at the bottom so the tabs sit on the toolbar's gold header line.
 - **3.4.3**: Chat tab art cropped to the tab height at native scale (its top no longer crosses the header lines); share icon now tints gold when dimmed (sync unavailable) as well as normal.
 - **3.4.2**: Zygor add-tab button is the Objective Tracker's native + button; share, report-step, more (…) and more-tabs (») glyphs tinted Blizzard gold (share keeps its green guide-sync colour).

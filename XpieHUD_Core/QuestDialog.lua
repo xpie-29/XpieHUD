@@ -6,7 +6,9 @@
 --   * small number badges next to the pickable options
 -- Blizzard's own frames, parchment and quest themes are never replaced.
 --
--- Frame names / APIs checked against wow-ui-source 12.1.0 (live):
+-- Frame names / APIs checked against wow-ui-source 12.1.5 (live) and the
+-- WoW Forever 1.60.1 branch (game type "camelot", which loads the same
+-- Mainline quest, gossip and book frames):
 --   UIPanelWindows["QuestFrame"/"GossipFrame"/"ItemTextFrame"] = { area = "left", pushable = 0 }
 --   The panel manager positions these from a local secure delegate, so we
 --   post-hook each frame's SetPoint instead of anything in the panel system.
