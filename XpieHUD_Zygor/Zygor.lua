@@ -510,17 +510,21 @@ end
 -- bottom 20px, unscaled. Scaling put the tab edge through the text; the full
 -- 32px rose into the header bar above.
 local TAB_ART_HEIGHT = 32
+local TAB_BOTTOM_TRIM = 4   -- px cut off the art's bottom edge so the tab sits ON the
+                            -- toolbar's gold header line instead of overlapping it
 local function LayoutTabTriple(triple, button)
     local h = button:GetHeight()
     if not h or h <= 0 or h > TAB_ART_HEIGHT then h = math.min(h and h > 0 and h or 20, TAB_ART_HEIGHT) end
-    local top = (TAB_ART_HEIGHT - h) / TAB_ART_HEIGHT   -- texcoord row where the crop starts
+    local shown = h - TAB_BOTTOM_TRIM
+    local top = (TAB_ART_HEIGHT - h) / TAB_ART_HEIGHT                       -- crop above the tab
+    local bottom = (TAB_ART_HEIGHT - TAB_BOTTOM_TRIM) / TAB_ART_HEIGHT      -- crop the bottom edge
     local left, mid, right = triple[1], triple[2], triple[3]
-    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -2, 0);   left:SetSize(16, h)
-    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0); right:SetSize(16, h)
+    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -2, TAB_BOTTOM_TRIM);   left:SetSize(16, shown)
+    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, TAB_BOTTOM_TRIM); right:SetSize(16, shown)
     mid:ClearAllPoints()
     mid:SetPoint("TOPLEFT", left, "TOPRIGHT")
     mid:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
-    for _, tx in ipairs(triple) do tx:SetTexCoord(0, 1, top, 1) end
+    for _, tx in ipairs(triple) do tx:SetTexCoord(0, 1, top, bottom) end
 end
 
 local function SetTripleShown(triple, shown, alpha)
