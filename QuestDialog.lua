@@ -154,7 +154,7 @@ local hideGroups = {
     { key = "questHideChat", frames = function()
         -- Edit boxes are left alone so typing mid-dialog stays visible.
         local list = Collect({}, GeneralDockManager, ChatFrameMenuButton, ChatFrameChannelButton,
-            QuickJoinToastButton, addon.chatMeterButton, addon.FindMeterFrame and addon.FindMeterFrame())
+            QuickJoinToastButton)
         for i = 1, (NUM_CHAT_WINDOWS or 10) do
             Collect(list, _G["ChatFrame" .. i], _G["ChatFrame" .. i .. "Tab"], _G["ChatFrame" .. i .. "ButtonFrame"])
         end
@@ -163,21 +163,10 @@ local hideGroups = {
     { key = "questHideMinimap", frames = function()
         return Collect({}, MinimapCluster)
     end },
-    -- "Guide Addons": whichever guide addons are ticked in the guide selector.
-    -- (Key kept as questHideRXP so existing settings carry over.)
+    -- Zygor's viewer and arrow (empty when the Zygor integration is off).
+    -- Key kept as questHideRXP (its pre-2.0 name) so the saved choice carries over.
     { key = "questHideRXP", frames = function()
-        local list = {}
-        if XpieHUDDB.guideRXP then
-            local rxp = _G["RXPGuides"]
-            local arrow = rxp and rxp.enabledFrames and rxp.enabledFrames.arrowFrame
-            -- RXPG_ARROW: the waypoint arrow (map.lua). RXP only touches its alpha on
-            -- state changes, so a fade sticks.
-            Collect(list, _G["RXPFrame"], _G["RXPTargetFrame"], _G["RXPItemFrame"], _G["RXPG_ARROW"], arrow)
-        end
-        if addon.GetZygorFrames then
-            Collect(list, unpack(addon:GetZygorFrames()))
-        end
-        return list
+        return Collect({}, unpack(addon:GetZygorFrames()))
     end },
     { key = "questHideBuffs", frames = function()
         return Collect({}, BuffFrame, DebuffFrame)
@@ -239,20 +228,74 @@ local function FadeUI()
     uiFaded = true
 end
 
--- The minimap draws blips, quest areas and the player arrow outside normal
--- alpha inheritance, so fading MinimapCluster leaves them floating. It's moved
--- off-screen instead (Visibility.lua; no Hide(), which would run Blizzard's
--- minimap scripts as XpieHUD and taint them).
+-- ---------------------------------------------------------------------------
+-- Minimap
+-- The minimap draws blips, quest areas, the player arrow and (12.1.5) the
+-- coordinates readout outside normal alpha inheritance, so fading
+-- MinimapCluster leaves them floating. Move the Minimap off-screen and back
+-- instead. Never Hide() it: that runs Blizzard's minimap scripts as XpieHUD
+-- and taints them (see the world map taint fix in the README).
+-- ---------------------------------------------------------------------------
+local minimapSaved       -- { points = {...}, clamped = bool } while off-screen
+local movingMinimap = false
+local minimapHooked = false
+
+local function SaveMinimapPoints()
+    local points = {}
+    for i = 1, Minimap:GetNumPoints() do
+        points[i] = { Minimap:GetPoint(i) }
+    end
+    return points
+end
+
+local function MoveMinimapAway()
+    movingMinimap = true
+    Minimap:SetClampedToScreen(false)
+    Minimap:ClearAllPoints()
+    Minimap:SetPoint("TOPRIGHT", UIParent, "BOTTOMLEFT", -4000, -4000)
+    movingMinimap = false
+end
+
+local function SetMinimapAway(away)
+    if not Minimap or Minimap:IsForbidden() then return end
+    if InCombatLockdown() and Minimap:IsProtected() then return end
+
+    if away and not minimapSaved then
+        if not minimapHooked then
+            minimapHooked = true
+            -- Something re-anchored the minimap while it's away (Edit Mode,
+            -- another addon): remember where it wanted to be, send it away again.
+            hooksecurefunc(Minimap, "SetPoint", function()
+                if movingMinimap or not minimapSaved then return end
+                minimapSaved.points = SaveMinimapPoints()
+                MoveMinimapAway()
+            end)
+        end
+        minimapSaved = { points = SaveMinimapPoints(), clamped = Minimap:IsClampedToScreen() }
+        MoveMinimapAway()
+    elseif not away and minimapSaved then
+        local saved = minimapSaved
+        minimapSaved = nil
+        movingMinimap = true
+        Minimap:ClearAllPoints()
+        for _, point in ipairs(saved.points) do
+            Minimap:SetPoint(unpack(point))
+        end
+        Minimap:SetClampedToScreen(saved.clamped)
+        movingMinimap = false
+    end
+end
+
 local function FadeUIAll()
     FadeUI()
-    addon:SetMinimapAway("quest", XpieHUDDB.questHideMinimap)
+    SetMinimapAway(XpieHUDDB.questHideMinimap)
 end
 
 local function RestoreUI()
     for frame in pairs(faded) do
         RestoreFrame(frame)
     end
-    addon:SetMinimapAway("quest", false)
+    SetMinimapAway(false)
     uiFaded = false
 end
 

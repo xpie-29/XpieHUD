@@ -1,42 +1,16 @@
 # XpieHUD
 
-A lightweight World of Warcraft addon for personal HUD management. Built for Retail (Midnight / 12.x).
+A lightweight World of Warcraft addon: quality-of-life for Blizzard's **native** quest windows, plus Zygor Guides styling to match. Built for Retail (Midnight, 12.1.5).
+
+General HUD hiding (chat, minimap, bars, menus) now lives in Enhance QoL. The original all-in-one XpieHUD, with visibility controls, the chat/meter toggle and the RestedXP integration, is preserved on the [`archive/full-v1.2.2`](https://github.com/xpie-29/XpieHUD/tree/archive/full-v1.2.2) branch.
 
 ## Features
 
-### General Visibility
-- **Hide Status Bars** — hide the primary and secondary Blizzard XP/rep tracking bars
-- **Hide Micro Menu** — hide the Blizzard micro menu cluster
-- **Hide Bag Bar** — hide the Blizzard bag buttons (keybindings unaffected)
-- **Extra Abilities Size** — scale the Extra Action Button and Zone Ability frame independently
-
-### RestedXP Integration
-- **Hide Active Targets** — hide the RestedXP Active Targets panel
-- **Hide Active Items** — hide the RestedXP Active Items / spells panel
-- **Strip Borders** — remove all border and edge textures from RestedXP frames (works on all themes including Dark Mode)
-- **RestedXP Opacity** — set overall transparency for all RestedXP frames
-- **Gold Waypoint Arrow** — replaces the RestedXP waypoint arrow with a gold arrowhead in Blizzard's HUD style (`Media/rxp_arrow.tga`); survives RXP theme changes
-
-### Zygor Guides Integration
-- **Strip Backgrounds & Borders** — transparent Zygor window background, borders, tab strip and toolbar, title logo hidden; step boxes keep Zygor's state colours (normal, complete, unavailable) at 50% opacity without edges. Survives Zygor skin changes.
-- **Gold Waypoint Arrow** — the same gold arrowhead, registered as a native Zygor arrow skin ("XpieHUD Gold", `Media/Zygor/arrow.tga`: 160 pre-rotated frames). Zygor's arrived / stairs / taxi icons are unchanged.
-
-### Guide Addon Selector
-Tick RestedXP, Zygor, or both in settings. An unticked guide is left completely alone, and anything XpieHUD changed on it is put back. Guide windows can stay visible while a quest window is open (the "Guide Addons" fade option).
-
-### Chat / Meter Toggle
-Three-state visibility cycle for the chat window and native Blizzard damage meter:
-- **State 0** — Chat visible, Meter hidden
-- **State 1** — Chat hidden, Meter visible  
-- **State 2** — Chat hidden, Meter hidden
-
-Includes a small movable on-screen button (left-click to cycle, right-drag to reposition).
-
 ### Quest Window
-Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows. There's no reskin: the parchment and campaign themes stay exactly as Blizzard draws them.
-- **Tooltips at Cursor**: while talking, tooltips that normally sit in the screen corner appear at the mouse (can be turned off).
-- **Hide UI While Talking**: fades action bars, unit frames (incl. Personal Resource Display), the objective tracker, chat and meter, the minimap, RestedXP frames and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
+Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. There's no reskin: the parchment and campaign themes stay exactly as Blizzard draws them.
+- **Hide UI While Talking**: fades action bars, unit frames (including the Personal Resource Display), the objective tracker, chat, the minimap, the Zygor guide and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
   - Frames from other addons can be added by name: run `/xhud questscan`, talk to an NPC, and close the window to read what's still visible, then `/xhud questhide <FrameName>`.
+- **Tooltips at Cursor**: while talking, tooltips that normally sit in the screen corner appear at the mouse (can be turned off).
 - **Position and Size**: drag a window's title bar to move it. A size slider (50–150%) sits in settings. Both are saved and re-applied every time the window opens.
 - **Keyboard Shortcuts** (out of combat):
   - **1–9** pick gossip options, quests in an NPC's list, and reward choices.
@@ -45,9 +19,10 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
   - All other keys pass through, so movement and camera still work. PvP quests and quests that cost gold still need a click.
 - **Number Badges & Key Hints**: quests keep their native icon (!, ?, daily, campaign...) with a small number on it; gossip options show the number over a dimmed icon; reward choices get a number in the corner. Also adds small "Space" / "Esc" hints beside the window's own buttons (can be turned off).
 
-### Key Bindings
-- **Toggle Chat** — bindable in the standard Key Bindings UI under "XpieHUD"
-- **Toggle Minimap** — bindable in the standard Key Bindings UI under "XpieHUD"
+### Zygor Guides
+- **Strip Backgrounds & Borders**: transparent Zygor window background, borders, tab strip and toolbar, title logo hidden; step boxes keep Zygor's state colours (normal, complete, unavailable) at 50% opacity without edges. Survives Zygor skin changes.
+- **Gold Waypoint Arrow**: a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `Media/Zygor/arrow.tga`: 160 pre-rotated frames). Zygor's arrived / stairs / taxi icons are unchanged.
+- **Enable Zygor Integration** switch: unticking puts back everything XpieHUD changed and leaves Zygor alone.
 
 ---
 
@@ -56,17 +31,9 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 | Command | Description |
 |---|---|
 | `/xhud` or `/xpiehud` | Open settings panel |
-| `/xhud chat` | Toggle chat visibility |
-| `/xhud minimap` | Toggle minimap visibility |
-| `/xhud meter` | Cycle to next chat/meter state |
-| `/xhud meter 0\|1\|2` | Jump to specific state |
-| `/xhud button` | Show/hide the on-screen toggle button |
-| `/xhud meterframe` | Scan for the native damage meter frame global |
-| `/xhud meterframe <name>` | Set meter frame name manually (saved across sessions) |
 | `/xhud questreset` | Reset quest window position and size |
 | `/xhud questscan` | List frames still visible during a quest window (arms for the next NPC if none is open) |
 | `/xhud questhide <name>` | Add/remove a frame (case-sensitive) from the fade list |
-| `/xhud showall` | Restore all hidden elements |
 | `/xhud reset` | Reset all settings to defaults (confirm twice) |
 
 ---
@@ -75,24 +42,22 @@ Quality-of-life for Blizzard's **native** quest, gossip and book/plaque windows.
 
 1. Download the latest release zip
 2. Extract the `XpieHUD` folder (including its `Media` subfolder) into your `World of Warcraft/_retail_/Interface/AddOns/` directory
-3. Reload the UI or restart WoW
+3. Restart WoW (a `/reload` is enough when no files were added)
 
 ## Requirements
 
-- World of Warcraft Retail (Midnight, Interface 120100+)
-- Optional: RestedXP Guides and/or Zygor Guides Viewer for the guide integrations
+- World of Warcraft Retail (Midnight, Interface 120105)
+- Optional: Zygor Guides Viewer for the Zygor features
 
 ## Notes
 
-- Blizzard HUD elements (chat, minimap, micro menu, bag bar, status bars, damage meter) are hidden by making them transparent and click-through, never with `Hide()`. Most are Edit Mode frames, and hiding them from addon code taints Blizzard's layout system (this caused the old `ADDON_ACTION_BLOCKED` error when opening the world map). The minimap is moved off-screen instead, because its blips ignore transparency.
-- The native damage meter frame name varies by patch. If the meter toggle doesn't work, run `/xhud meterframe` to scan for it, then set it with `/xhud meterframe <name>`. This is saved permanently.
-- RestedXP border stripping works on all themes (Custom, Dark Mode, etc.) and survives theme switches.
-- The chat/meter toggle button position is saved across sessions.
-- Quest window positioning: if another addon (e.g. Enhance QOL's Move module) also moves `QuestFrame`, `GossipFrame` or `ItemTextFrame`, turn it off there so the two don't fight.
-- `/xhud showall` only clears the persistent hide options; it doesn't touch the quest window settings.
+- XpieHUD never calls `Hide()`/`Show()` on Blizzard HUD frames. Most are Edit Mode frames, and hiding them from addon code taints Blizzard's layout system (this caused the old world map `ADDON_ACTION_BLOCKED` error). The quest window fades frames by transparency instead, and moves the minimap off-screen because its blips ignore transparency.
+- Quest window positioning: if another addon (e.g. Enhance QoL's Move module) also moves `QuestFrame`, `GossipFrame` or `ItemTextFrame`, turn it off there so the two don't fight.
+- Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
 
+- **2.0.0**: Slimmed down to the quest window features and the Zygor integration (everything else moved to Enhance QoL; full version archived on `archive/full-v1.2.2`). Updated for 12.1.5. Obsolete settings pruned on load.
 - **1.2.2**: Fix ADDON_ACTION_BLOCKED (SetPropagateKeyboardInput) when reloading in combat; quest keys reset to pass-through on key release
 - **1.2.1**: Zygor title logo hidden with the window chrome; Zygor step boxes at 50% opacity
 - **1.2.0**: Zygor Guides integration (transparent window, 30% step boxes, gold arrow skin); guide addon selector (RestedXP / Zygor / both); quest fade "RestedXP" option is now "Guide Addons"

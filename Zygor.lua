@@ -1,7 +1,7 @@
 -- Zygor.lua  (XpieHUD)
--- Zygor Guides Viewer integration, matching what RestedXP.lua does for RXP:
+-- Zygor Guides Viewer integration:
 --   * strip the viewer window's backgrounds and borders
---   * step boxes keep Zygor's state colours at 30% opacity, without edges
+--   * step boxes keep Zygor's state colours at 50% opacity, without edges
 --   * "XpieHUD Gold" arrow skin: our gold arrowhead as a native Zygor arrow skin
 --
 -- Zygor internals used (checked against Zygor 9.6 retail):
@@ -137,7 +137,7 @@ local function RegisterArrowSkin()
         spritecount = 160,
         mirror = false,
         precise = { range = 3, smooth = false, r = 1, g = 1, b = 1 },
-        -- white gradient = no tint: the arrow stays gold like the RXP one
+        -- white gradient = no tint: the arrow stays gold
         ar = 1, ag = 1, ab = 1,
         br = 1, bg = 1, bb = 1,
         cr = 1, cg = 1, cb = 1,
