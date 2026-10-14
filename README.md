@@ -88,6 +88,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.3.1**: Chat tab art drawn at its native 32px height (scaling had put the tab edge through the text); single gold line (tracker art) under the guide tabs.
 - **3.3.0**: Zygor guide tabs restyled as Blizzard's chat tabs (translucent, gold selected glow, hover highlight, native font, gold text).
 - **3.2.4**: Zygor title buttons at Blizzard's own sizes: gold gear 27px (Damage Meter), red close 24px (standard close button).
 - **3.2.3**: XpieHUD style draws Zygor's guide in Blizzard's native UI font (STANDARD_TEXT_FONT, Friz Quadrata in English) instead of Zygor's Open Sans; settings gear nudged 2px down like Blizzard's Damage Meter header.

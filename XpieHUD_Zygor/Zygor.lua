@@ -386,8 +386,8 @@ end
 --   background  ChatFrameTab-BG{Left,Mid,Right}           40% unless selected
 --   selected    ChatFrameTab-Selected{Left,Mid,Right}     ADD, selected tab only
 --   hover       ChatFrameTab-Highlight{Left,Mid,Right}    ADD, HIGHLIGHT layer
--- The chat art is drawn for 32px-tall tabs with 16px ends; Zygor's tabs are
--- 20px, so the ends scale with the tab height. Zygor's own tab decoration,
+-- The chat art is drawn at its native 32px height with 16px ends, anchored to
+-- the bottom of Zygor's 20px tabs. Zygor's own tab decoration,
 -- separators and backdrops are hidden (alpha / transparent backdrop) and
 -- Zygor's tab objects (ZGV.Tabs, methods via metatable) are hooked so new,
 -- moved and reselected tabs stay styled.
@@ -408,13 +408,14 @@ local function MakeTabTriple(button, kind, layer, blend)
     return triple
 end
 
+-- Native proportions, not scaled: the chat tab art is 32px tall with the tab
+-- shape in its lower part, anchored to the tab's bottom (ChatTabArtTemplate:
+-- 16px ends at x -2 / +2). Chat tab text sits ~11px above the bottom, Zygor's
+-- ~10px, so the text lines up; the art's upper part rises above the tab.
 local function LayoutTabTriple(triple, button)
-    local h = button:GetHeight()
-    if not h or h <= 0 then h = 20 end
-    local w = math.floor(16 * h / 32 + 0.5)   -- chat tab ends: 16 wide at 32 tall
     local left, mid, right = triple[1], triple[2], triple[3]
-    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -1, 0);   left:SetSize(w, h)
-    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 1, 0); right:SetSize(w, h)
+    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -2, 0);   left:SetSize(16, 32)
+    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0); right:SetSize(16, 32)
     mid:ClearAllPoints()
     mid:SetPoint("TOPLEFT", left, "TOPRIGHT")
     mid:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
@@ -495,6 +496,38 @@ local function StyleAllTabs()
     -- Let Zygor repaint its own tab colours (backdrops, active tab, text).
     if restored and Tabs.ApplySkin then Tabs:ApplySkin() end
     restyling = false
+end
+
+-- A single gold line under the tab strip, separating tabs from the guide:
+-- the Objective Tracker's "UI-World-Quest-golden-line" atlas (native art), or
+-- a faint black line if that atlas is ever missing. It lives on its own layer
+-- of our panel, above the panel body, below Zygor's content.
+local TAB_LINE_ATLAS = "UI-World-Quest-golden-line"
+local tabLine
+
+local function ApplyTabLine(frame, panel)
+    local strip = frame.Controls and frame.Controls.TabContainer or (frame.Border and frame.Border.TabContainer)
+    if not (strip and panel) then return end
+    if not tabLine then
+        local holder = CreateFrame("Frame", nil, panel.frame)
+        holder:SetAllPoints(panel.frame)
+        holder:EnableMouse(false)
+        tabLine = holder:CreateTexture(nil, "ARTWORK")
+        local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(TAB_LINE_ATLAS)
+        if info then
+            tabLine:SetAtlas(TAB_LINE_ATLAS, false)
+            tabLine:SetHeight(math.max(1, math.min(info.height or 2, 6)))
+        else
+            tabLine:SetColorTexture(0, 0, 0, 0.6)
+            tabLine:SetHeight(1)
+        end
+        tabLine.holder = holder
+    end
+    tabLine.holder:SetFrameLevel(panel.headerFrame:GetFrameLevel())
+    tabLine:ClearAllPoints()
+    tabLine:SetPoint("LEFT", strip, "BOTTOMLEFT", 0, 0)
+    tabLine:SetPoint("RIGHT", strip, "BOTTOMRIGHT", 0, 0)
+    tabLine.holder:SetShown(XpieStyle())
 end
 
 local tabsHooked = false
@@ -593,6 +626,7 @@ function module:Apply()
         if frame.Controls then ApplyTitleButtons(frame.Controls) end
         HookTabs()
         StyleAllTabs()
+        ApplyTabLine(frame, self.panel)
     end
 
     ApplyArrow()
