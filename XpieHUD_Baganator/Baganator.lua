@@ -49,8 +49,17 @@ local COINBOX_H    = 17                                     -- ContainerMoneyFra
 local COINBOX_INSET = 8
 -- Currencies button: same size as the gear, bottom-left, centred on the
 -- coin box, which starts just right of it.
-local CURRENCY_SIZE, CURRENCY_ICON = 24, 20
+local CURRENCY_SIZE, CURRENCY_ICON = 24, 14
+local CURRENCY_ICON_Y = 2   -- the frame's arrow sits low; the icon covers it centred 2px up (tuned in game)
 local CURRENCY_X   = 6
+-- The gear's frame without the gear: the dropdown button art (its arrow is
+-- hidden under the icon), with the same normal / hover / pressed states.
+local CURRENCY_ART = {
+    normal       = "common-dropdown-a-button-shadowless",
+    hover        = "common-dropdown-a-button-hover-shadowless",
+    pressed      = "common-dropdown-a-button-pressed-shadowless",
+    pressedHover = "common-dropdown-a-button-pressedhover-shadowless",
+}
 local COINBOX_GAP  = 2
 
 -- Gear menu entries, in menu order: Baganator button tag -> label.
@@ -153,9 +162,9 @@ local function Flatten(button)
 end
 
 -- ---------------------------------------------------------------------------
--- Currencies button: styled like the gear (no button frame, gear-sized, the
--- icon itself glows on hover and sinks on press), bottom-left, with the coin
--- box running from its right edge.
+-- Currencies button: in the gear's square frame (gear-sized, with its hover
+-- and pressed states), bottom-left, with the coin box running from its right
+-- edge.
 -- ---------------------------------------------------------------------------
 local function PlaceCurrency(button)
     if button.xpiePlacing then return end
@@ -170,24 +179,34 @@ local function StyleCurrency(button)
     if button.xpieCurrency then return end
     button.xpieCurrency = true
     Flatten(button)   -- drops the red art, keeps the tooltip below the window
+    Stash(button:GetHighlightTexture())   -- the frame art has its own hover state
     button:SetSize(CURRENCY_SIZE, CURRENCY_SIZE)
 
+    local frame = button:CreateTexture(nil, "BACKGROUND", nil, 1)
+    frame:SetAllPoints()
+    local over, down = false, false
+    local function Update()
+        frame:SetAtlas(down and (over and CURRENCY_ART.pressedHover or CURRENCY_ART.pressed)
+            or (over and CURRENCY_ART.hover or CURRENCY_ART.normal))
+    end
+    Update()
+
     local icon = button.Icon
+    local function PlaceIcon()
+        if not icon then return end
+        icon:ClearAllPoints()
+        icon:SetPoint("CENTER", down and 1 or 0, CURRENCY_ICON_Y - (down and 1 or 0))
+    end
     if icon then
         icon:SetSize(CURRENCY_ICON, CURRENCY_ICON)
-        button:SetHighlightTexture(icon:GetTexture(), "ADD")
-        local glow = button:GetHighlightTexture()
-        glow:ClearAllPoints()
-        glow:SetPoint("CENTER")
-        glow:SetSize(CURRENCY_ICON, CURRENCY_ICON)
-        glow:SetAlpha(0.4)
-        button:HookScript("OnMouseDown", function()
-            icon:SetPoint("CENTER", 1, -1)
-        end)
-        button:HookScript("OnMouseUp", function()
-            icon:SetPoint("CENTER", 0, 0)
-        end)
+        icon:SetDrawLayer("ARTWORK", 2)
+        PlaceIcon()
     end
+
+    button:HookScript("OnEnter", function() over = true; Update() end)
+    button:HookScript("OnLeave", function() over = false; Update() end)
+    button:HookScript("OnMouseDown", function() down = true; Update(); PlaceIcon() end)
+    button:HookScript("OnMouseUp", function() down = false; Update(); PlaceIcon() end)
 
     hooksecurefunc(button, "SetPoint", PlaceCurrency)
     PlaceCurrency(button)
@@ -412,72 +431,6 @@ if Baganator and Baganator.API and Baganator.API.Skins then
         OnFrame(details)
     end
 end
-
--- ---------------------------------------------------------------------------
--- /xhud bagbuttons: preview of native square button art for the Currencies
--- button, next to the gear, with working hover and press states.
--- Temporary: remove once a look is chosen.
--- ---------------------------------------------------------------------------
-local PREVIEW_ICON = "Interface\\AddOns\\Baganator\\Assets\\Currency.png"
-local PREVIEW_HOVER = "Interface\\Buttons\\UI-Common-MouseHilight"
-local PREVIEWS = {
-    { label = "Gear",  atlas = { "common-dropdown-a-button-settings-shadowless", "common-dropdown-a-button-settings-pressed-shadowless", "common-dropdown-a-button-settings-hover-shadowless" }, noIcon = true },
-    { label = "A",     atlas = { "common-button-square-gray-up", "common-button-square-gray-down" } },
-    { label = "B",     atlas = { "common-button-tertiary-square-normal", "common-button-tertiary-square-pressed" } },
-    { label = "C",     file  = { "Interface\\Buttons\\UI-SquareButton-Up", "Interface\\Buttons\\UI-SquareButton-Down" } },
-    { label = "D",     atlas = { "common-dropdown-a-button-shadowless", "common-dropdown-a-button-pressed-shadowless", "common-dropdown-a-button-hover-shadowless" } },
-}
-
-local previewFrame
-local function ShowButtonPreview()
-    if previewFrame then
-        previewFrame:SetShown(not previewFrame:IsShown())
-        return
-    end
-    local f = CreateFrame("Frame", nil, UIParent, "TooltipBackdropTemplate")
-    f:SetSize(#PREVIEWS * 44 + 16, 64)
-    f:SetPoint("CENTER", 0, 120)
-    f:SetFrameStrata("DIALOG")
-    f:EnableMouse(true)
-    for i, p in ipairs(PREVIEWS) do
-        local b = CreateFrame("Button", nil, f)
-        b:SetSize(GEAR_SIZE, GEAR_SIZE)
-        b:SetPoint("TOPLEFT", 8 + (i - 1) * 44 + 10, -10)
-        local normal = b:CreateTexture(nil, "BACKGROUND")
-        normal:SetAllPoints()
-        local function Set(state)
-            if p.atlas then normal:SetAtlas(p.atlas[state] or p.atlas[1]) else normal:SetTexture(p.file[state] or p.file[1]) end
-        end
-        Set(1)
-        local icon
-        if not p.noIcon then
-            icon = b:CreateTexture(nil, "ARTWORK")
-            icon:SetTexture(PREVIEW_ICON)
-            icon:SetSize(14, 14)
-            icon:SetPoint("CENTER")
-        end
-        if p.atlas and p.atlas[3] then
-            b:SetScript("OnEnter", function() Set(3) end)
-            b:SetScript("OnLeave", function() Set(1) end)
-        else
-            b:SetHighlightTexture(PREVIEW_HOVER, "ADD")
-        end
-        b:SetScript("OnMouseDown", function()
-            Set(2)
-            if icon then icon:SetPoint("CENTER", 1, -1) end
-        end)
-        b:SetScript("OnMouseUp", function()
-            Set(b:IsMouseOver() and p.atlas and p.atlas[3] and 3 or 1)
-            if icon then icon:SetPoint("CENTER", 0, 0) end
-        end)
-        local text = f:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
-        text:SetPoint("TOP", b, "BOTTOM", 0, -4)
-        text:SetText(p.label)
-    end
-    previewFrame = f
-end
-
-core:RegisterCommand("bagbuttons", ShowButtonPreview, "preview button styles for Baganator's Currencies button (toggle)")
 
 -- ---------------------------------------------------------------------------
 -- Settings

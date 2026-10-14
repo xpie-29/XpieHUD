@@ -63,7 +63,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
   - One **native gear menu** right of the portrait holds Baganator's extra buttons: All Characters, Bank, Guild Bank, Search Everywhere, Saved Searches, Transfer Items and Search Help. Each still does exactly what Baganator's button did.
   - The **Customise** button is gone (Baganator's settings open from its minimap/addon compartment button), and so is the **Bag Slots** button: the native bag bar stays on screen and is used as intended.
   - The native **Clean Up Bags** button sits at the end of the search box, as on the native bag. Right-click still gives Baganator's own sort options.
-  - The **Currencies** button matches the gear (same size, no red button frame) and sits bottom-left, with the coin box to its right. Other bottom buttons become flat, native-size icon buttons.
+  - The **Currencies** button matches the gear (same size and square frame, with hover and pressed states) and sits bottom-left, with the coin box to its right. Other bottom buttons become flat, native-size icon buttons.
   - The money line sits in Blizzard's **coin box**.
 - **Original**: leaves Baganator completely alone. Changing the style takes effect after `/reload`.
 
@@ -104,6 +104,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.5.4**: Baganator: the Currencies button uses the gear's square frame art with its hover and pressed states.
 - **3.5.3**: Baganator: the Currencies button is styled like the gear (gear-sized, no button frame, icon glows on hover) at the bottom-left, with the coin box starting to its right.
 - **3.5.2**: Baganator: gear tucked against the portrait and centred on the title bar; bottom icon buttons fit the coin box, with their hover glow kept inside the button.
 - **3.5.1**: Baganator: the Combined Backpack's smaller portrait corner, gear right of the portrait and above the border, search box clear of the portrait, Clean Up Bags button now appears, bottom button tooltips open below the window. Settings notes no longer overlap the controls under them.
