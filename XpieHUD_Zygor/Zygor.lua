@@ -245,6 +245,99 @@ local function ApplyArrow()
 end
 
 -- ---------------------------------------------------------------------------
+-- Title bar buttons (XpieHUD style)
+-- Zygor's menu ("burger") and close buttons get Blizzard's native HUD
+-- buttons and sit on the panel's gold header bar, laid over Zygor's title bar:
+--   menu  -> the Damage Meter's gold settings gear (left)
+--   close -> Blizzard's red close button (UIPanelCloseButton art), at the
+--            Objective Tracker's header button size (right)
+-- Zygor re-skins these on every ApplySkin, so the restyle is a persistent
+-- post-hook; the Original style calls Zygor's ApplySkin and restores the
+-- anchors it had.
+-- ---------------------------------------------------------------------------
+local BUTTON_STYLES = {
+    MenuSettingsButton = {
+        normal = "common-dropdown-a-button-settings-shadowless",
+        pushed = "common-dropdown-a-button-settings-pressed-shadowless",
+        hover  = "common-dropdown-a-button-settings-hover-shadowless", hoverBlend = "BLEND",
+        size = 22, point = "LEFT", x = 6,
+    },
+    CloseButton = {
+        normal = "RedButton-Exit",
+        pushed = "RedButton-exit-pressed",
+        hover  = "RedButton-Highlight", hoverBlend = "ADD",
+        size = 19, point = "RIGHT", x = -2,
+    },
+}
+-- Title starts after the gear and stops before the close button.
+local TITLE_LEFT  = 6 + 22 + 6
+local TITLE_RIGHT = 2 + 19 + 6
+
+local savedButtonPoints = {}   -- [button] = { {GetPoint(i)}, ... } before we moved it
+local hookedButtons = {}
+
+local function ButtonsOn()
+    return XpieStyle() and module.panel ~= nil
+end
+
+local function StyleButton(button, spec)
+    if not savedButtonPoints[button] then
+        local points = {}
+        for i = 1, button:GetNumPoints() do points[i] = { button:GetPoint(i) } end
+        savedButtonPoints[button] = points
+        points.level = button:GetFrameLevel()
+    end
+    button:SetNormalAtlas(spec.normal)
+    button:SetPushedAtlas(spec.pushed)
+    button:SetHighlightAtlas(spec.hover, spec.hoverBlend)
+    -- Undo Zygor's texture insets and tinting.
+    for _, tx in ipairs({ button:GetNormalTexture(), button:GetPushedTexture(), button:GetHighlightTexture() }) do
+        if tx then
+            tx:ClearAllPoints()
+            tx:SetAllPoints(button)
+            tx:SetVertexColor(1, 1, 1, 1)
+            tx:SetAlpha(1)
+        end
+    end
+    button:SetSize(spec.size, spec.size)
+    button:ClearAllPoints()
+    button:SetPoint(spec.point, module.panel.headerFrame, spec.point, spec.x, 0)
+    -- Zygor pins the menu button to an absolute frame level; keep both
+    -- buttons above our header bar.
+    local headerLevel = module.panel.headerFrame:GetFrameLevel()
+    if button:GetFrameLevel() <= headerLevel then button:SetFrameLevel(headerLevel + 2) end
+end
+
+local function RestoreButton(button)
+    local points = savedButtonPoints[button]
+    if not points then return end
+    savedButtonPoints[button] = nil
+    if button.ApplySkin then button:ApplySkin() end   -- Zygor's own textures and size
+    button:ClearAllPoints()
+    for _, p in ipairs(points) do button:SetPoint(unpack(p)) end
+    if points.level then button:SetFrameLevel(points.level) end
+end
+
+local function ApplyTitleButtons(controls)
+    for key, spec in pairs(BUTTON_STYLES) do
+        local button = controls[key]
+        if button then
+            if not hookedButtons[button] and button.ApplySkin then
+                hookedButtons[button] = true
+                hooksecurefunc(button, "ApplySkin", function(self)
+                    if ButtonsOn() then StyleButton(self, spec) end
+                end)
+            end
+            if ButtonsOn() then
+                StyleButton(button, spec)
+            else
+                RestoreButton(button)
+            end
+        end
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Module hooks (called by the core)
 -- ---------------------------------------------------------------------------
 local frameHooked = false
@@ -286,8 +379,14 @@ function module:Apply()
         -- resizes with it (Zygor's own window background is transparent).
         self.panel = self.panel or core:CreatePanel()
         self.panel:Attach(frame)
+        -- Gold header bar laid over Zygor's own title bar, title after the gear.
+        local titleBar = (frame.Controls and frame.Controls.TitleBar) or (frame.Border and frame.Border.TitleBar)
+        if titleBar then self.panel:SetHeaderAnchor(titleBar) end
+        self.panel:SetTitleInsets(TITLE_LEFT, TITLE_RIGHT)
         self.panel:SetStyle(self.db.panel)
         self.panel:SetActive(XpieStyle())
+
+        if frame.Controls then ApplyTitleButtons(frame.Controls) end
     end
 
     ApplyArrow()

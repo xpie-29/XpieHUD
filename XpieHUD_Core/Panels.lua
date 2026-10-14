@@ -25,6 +25,9 @@
 --   panel:Attach(targetFrame)   -- sits behind target, resizes/fades with it
 --   panel:SetStyle(style)       -- the fields above
 --   panel:SetActive(true/false) -- show/hide (still follows target visibility)
+--   panel:SetHeaderAnchor(region)   -- lay the header bar over a region of the target
+--   panel:SetTitleInsets(left, right) -- keep the title clear of buttons on the bar
+--   panel.headerFrame               -- anchor point for buttons a module puts on the bar
 
 local _, addon = ...
 
@@ -101,8 +104,6 @@ function addon:CreatePanel()
     NineSliceUtil.ApplyLayoutByName(tooltipBody, TOOLTIP_LAYOUT)
 
     local headerFrame = CreateFrame("Frame", nil, frame)
-    headerFrame:SetPoint("TOPLEFT")
-    headerFrame:SetPoint("TOPRIGHT")
     local header = headerFrame:CreateTexture(nil, "BACKGROUND")
     header:SetAllPoints()
     header:SetAtlas(TRACKER_HEADER, false)   -- stretched to the panel's width
@@ -149,17 +150,45 @@ function PanelMixin:Attach(target)
     SyncShown(self)
 end
 
+-- Header placement. By default the bar sits above the target (like a tracker
+-- section header above its content) and the panel grows upward by its
+-- height. A module can instead lay it over a region of the target (e.g. the
+-- target's own title bar): the bar is centred vertically on that region and
+-- spans the panel's width.
+function PanelMixin:SetHeaderAnchor(region)
+    self.headerAnchor = region
+    self:ApplyAnchors()
+end
+
+-- Title text insets from the header bar's edges, so a module can keep the
+-- title clear of buttons it places on the bar (Blizzard's tracker uses 7).
+function PanelMixin:SetTitleInsets(left, right)
+    self.titleLeft, self.titleRight = left, right
+    self.title:ClearAllPoints()
+    self.title:SetPoint("LEFT", left or 7, 0)
+    self.title:SetPoint("RIGHT", -(right or 8), 0)
+end
+
 function PanelMixin:ApplyAnchors()
     local target, style = self.target, self.style
     if not (target and style) then return end
     local pad = style.padding or 0
-    -- The header bar sits above the target (like a tracker section header
-    -- above its content), so the panel grows upward by the bar's height.
-    local headerSpace = self.headerFrame:IsShown() and self.headerFrame:GetHeight() or 0
+    local hf, anchor = self.headerFrame, self.headerAnchor
+    local headerSpace = (not anchor and hf:IsShown()) and hf:GetHeight() or 0
     local f = self.frame
     f:ClearAllPoints()
     f:SetPoint("TOPLEFT", target, "TOPLEFT", -pad, pad + headerSpace)
     f:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", pad, -pad)
+
+    hf:ClearAllPoints()
+    if anchor then
+        local dy = (hf:GetHeight() - (anchor:GetHeight() or 0)) / 2
+        hf:SetPoint("TOPLEFT", anchor, "TOPLEFT", -pad, dy)
+        hf:SetPoint("TOPRIGHT", anchor, "TOPRIGHT", pad, dy)
+    else
+        hf:SetPoint("TOPLEFT", f, "TOPLEFT")
+        hf:SetPoint("TOPRIGHT", f, "TOPRIGHT")
+    end
 end
 
 -- Bodies two levels below the target, the header bar one below: everything
