@@ -87,6 +87,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.2.4**: Zygor title buttons at Blizzard's own sizes: gold gear 27px (Damage Meter), red close 24px (standard close button).
 - **3.2.3**: XpieHUD style draws Zygor's guide in Blizzard's native UI font (STANDARD_TEXT_FONT, Friz Quadrata in English) instead of Zygor's Open Sans; settings gear nudged 2px down like Blizzard's Damage Meter header.
 - **3.2.2**: Zygor title buttons now keep Zygor's own buttons with their art hidden and XpieHUD's gear / close art drawn on top (Zygor could repaint the previous restyle); header bar art overhangs both ends like the tracker's.
 - **3.2.1**: Zygor header bar sits on Zygor's own title bar; Zygor's menu and close buttons restyled as Blizzard's gold settings gear and red close button; title starts after the gear, vertically centred like the tracker's.

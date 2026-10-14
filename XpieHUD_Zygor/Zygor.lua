@@ -254,8 +254,7 @@ end
 --   * Our art is extra textures created on the button, which Zygor's code
 --     doesn't know about, so it can't repaint them:
 --       menu  -> the Damage Meter's gold settings gear (left end of the bar)
---       close -> Blizzard's red close button (UIPanelCloseButton art), at the
---                Objective Tracker's header button size (right end)
+--       close -> Blizzard's red close button (UIPanelCloseButton art and size)
 --     The HIGHLIGHT draw layer gives the native hover; mouse down/up hooks
 --     swap in the pressed art.
 -- The Original style hides our art and restores Zygor's alpha, size, anchors
@@ -266,19 +265,19 @@ local BUTTON_STYLES = {
         normal = "common-dropdown-a-button-settings-shadowless",
         pushed = "common-dropdown-a-button-settings-pressed-shadowless",
         hover  = "common-dropdown-a-button-settings-hover-shadowless", hoverBlend = "BLEND",
-        size = 22, point = "LEFT", x = 6,
+        size = 27, point = "LEFT", x = 4,   -- Blizzard's size (DamageMeterSettingsDropdownButtonTemplate)
         y = -2,   -- the gear art sits high in its box; Blizzard nudges it 2px down too (Damage Meter header)
     },
     CloseButton = {
         normal = "RedButton-Exit",
         pushed = "RedButton-exit-pressed",
         hover  = "RedButton-Highlight", hoverBlend = "ADD",
-        size = 19, point = "RIGHT", x = -2,
+        size = 24, point = "RIGHT", x = -2,  -- Blizzard's size (UIPanelCloseButton)
     },
 }
 -- Title starts after the gear and stops before the close button.
-local TITLE_LEFT  = 6 + 22 + 6
-local TITLE_RIGHT = 2 + 19 + 6
+local TITLE_LEFT  = 4 + 27 + 5
+local TITLE_RIGHT = 2 + 24 + 6
 
 local skins = {}       -- [button] = { art, glow, spec, saved = { points, level } }
 
