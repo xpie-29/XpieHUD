@@ -415,32 +415,38 @@ end
 -- Gold glyphs (XpieHUD style)
 -- Blizzard has no native "share guide", "report step", "more" (…) or
 -- "more tabs" (») icons, so these keep Zygor's simple glyphs, tinted
--- Blizzard's gold like the tracker's header controls. Only white is tinted:
+-- Blizzard's gold like the tracker's header controls. Only neutral colours are tinted:
 -- Zygor colours the share button green during a party guide sync
 -- (Sync:UpdateButtonColor), and that status stays visible.
 -- ---------------------------------------------------------------------------
 local GOLD_GLYPHS = { "GuideShareButton", "ReportStep", "MenuAdditionalButton", "TabsMoreButton" }
 local goldHooked = {}
 
-local function IsWhite(tx)
-    local r, g, b = tx:GetVertexColor()
-    return r and r > 0.95 and g > 0.95 and b > 0.95
+-- Neutral (white / grey) glyphs become gold at the same brightness, so Zygor's
+-- dimmed states stay dimmed (the share button is 60% grey when sync isn't
+-- available). Coloured states (green guide sync, yellow secret sync) are left
+-- alone. Original style converts gold back to the same grey/white.
+local function Neutral(r, g, b)
+    return r and math.abs(r - g) < 0.02 and math.abs(g - b) < 0.02
 end
 
-local function IsGold(tx)
-    local r, g, b = tx:GetVertexColor()
+local function GoldLevel(r, g, b)   -- k if colour == gold * k, else nil
     local gr, gg, gb = NORMAL_FONT_COLOR:GetRGB()
-    return r and math.abs(r - gr) < 0.02 and math.abs(g - gg) < 0.02 and math.abs(b - gb) < 0.02
+    local k = r / gr
+    if k > 0 and math.abs(g - gg * k) < 0.02 and math.abs(b - gb * k) < 0.02 then return k end
 end
 
 local function TintGlyph(button)
     local on = XpieStyle()
+    local gr, gg, gb = NORMAL_FONT_COLOR:GetRGB()
     for _, tx in ipairs({ button:GetNormalTexture(), button:GetPushedTexture() }) do
         if tx then
-            if on and IsWhite(tx) then
-                tx:SetVertexColor(NORMAL_FONT_COLOR:GetRGB())
-            elseif not on and IsGold(tx) then
-                tx:SetVertexColor(1, 1, 1, 1)
+            local r, g, b, a = tx:GetVertexColor()
+            if on and Neutral(r, g, b) then
+                tx:SetVertexColor(gr * r, gg * r, gb * r, a)
+            elseif not on and r then
+                local k = GoldLevel(r, g, b)
+                if k then tx:SetVertexColor(k, k, k, a) end
             end
         end
     end
@@ -498,17 +504,23 @@ local function MakeTabTriple(button, kind, layer, blend)
     return triple
 end
 
--- Native proportions, not scaled: the chat tab art is 32px tall with the tab
--- shape in its lower part, anchored to the tab's bottom (ChatTabArtTemplate:
--- 16px ends at x -2 / +2). Chat tab text sits ~11px above the bottom, Zygor's
--- ~10px, so the text lines up; the art's upper part rises above the tab.
+-- Native scale, cropped to the tab: the chat tab art is 32px tall with the tab
+-- shape in its lower part (ChatTabArtTemplate: 16px ends at x -2 / +2,
+-- anchored to the bottom). Zygor's tabs are 20px, so we show only the art's
+-- bottom 20px, unscaled. Scaling put the tab edge through the text; the full
+-- 32px rose into the header bar above.
+local TAB_ART_HEIGHT = 32
 local function LayoutTabTriple(triple, button)
+    local h = button:GetHeight()
+    if not h or h <= 0 or h > TAB_ART_HEIGHT then h = math.min(h and h > 0 and h or 20, TAB_ART_HEIGHT) end
+    local top = (TAB_ART_HEIGHT - h) / TAB_ART_HEIGHT   -- texcoord row where the crop starts
     local left, mid, right = triple[1], triple[2], triple[3]
-    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -2, 0);   left:SetSize(16, 32)
-    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0); right:SetSize(16, 32)
+    left:ClearAllPoints();  left:SetPoint("BOTTOMLEFT", button, "BOTTOMLEFT", -2, 0);   left:SetSize(16, h)
+    right:ClearAllPoints(); right:SetPoint("BOTTOMRIGHT", button, "BOTTOMRIGHT", 2, 0); right:SetSize(16, h)
     mid:ClearAllPoints()
     mid:SetPoint("TOPLEFT", left, "TOPRIGHT")
     mid:SetPoint("BOTTOMRIGHT", right, "BOTTOMLEFT")
+    for _, tx in ipairs(triple) do tx:SetTexCoord(0, 1, top, 1) end
 end
 
 local function SetTripleShown(triple, shown, alpha)

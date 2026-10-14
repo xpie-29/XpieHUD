@@ -89,6 +89,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.4.3**: Chat tab art cropped to the tab height at native scale (its top no longer crosses the header lines); share icon now tints gold when dimmed (sync unavailable) as well as normal.
 - **3.4.2**: Zygor add-tab button is the Objective Tracker's native + button; share, report-step, more (…) and more-tabs (») glyphs tinted Blizzard gold (share keeps its green guide-sync colour).
 - **3.4.1**: Zygor tab selected glow and hover highlight toned down to 25% opacity.
 - **3.4.0**: Zygor's toolbar row (step arrows, step number, icons) styled as an Objective Tracker section header (the art behind "Campaign" / "Quests"); step number in Blizzard's gold with the header shadow; step arrows as Blizzard's flat arrow icons.
