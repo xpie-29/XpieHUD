@@ -414,6 +414,72 @@ if Baganator and Baganator.API and Baganator.API.Skins then
 end
 
 -- ---------------------------------------------------------------------------
+-- /xhud bagbuttons: preview of native square button art for the Currencies
+-- button, next to the gear, with working hover and press states.
+-- Temporary: remove once a look is chosen.
+-- ---------------------------------------------------------------------------
+local PREVIEW_ICON = "Interface\\AddOns\\Baganator\\Assets\\Currency.png"
+local PREVIEW_HOVER = "Interface\\Buttons\\UI-Common-MouseHilight"
+local PREVIEWS = {
+    { label = "Gear",  atlas = { "common-dropdown-a-button-settings-shadowless", "common-dropdown-a-button-settings-pressed-shadowless", "common-dropdown-a-button-settings-hover-shadowless" }, noIcon = true },
+    { label = "A",     atlas = { "common-button-square-gray-up", "common-button-square-gray-down" } },
+    { label = "B",     atlas = { "common-button-tertiary-square-normal", "common-button-tertiary-square-pressed" } },
+    { label = "C",     file  = { "Interface\\Buttons\\UI-SquareButton-Up", "Interface\\Buttons\\UI-SquareButton-Down" } },
+    { label = "D",     atlas = { "common-dropdown-a-button-shadowless", "common-dropdown-a-button-pressed-shadowless", "common-dropdown-a-button-hover-shadowless" } },
+}
+
+local previewFrame
+local function ShowButtonPreview()
+    if previewFrame then
+        previewFrame:SetShown(not previewFrame:IsShown())
+        return
+    end
+    local f = CreateFrame("Frame", nil, UIParent, "TooltipBackdropTemplate")
+    f:SetSize(#PREVIEWS * 44 + 16, 64)
+    f:SetPoint("CENTER", 0, 120)
+    f:SetFrameStrata("DIALOG")
+    f:EnableMouse(true)
+    for i, p in ipairs(PREVIEWS) do
+        local b = CreateFrame("Button", nil, f)
+        b:SetSize(GEAR_SIZE, GEAR_SIZE)
+        b:SetPoint("TOPLEFT", 8 + (i - 1) * 44 + 10, -10)
+        local normal = b:CreateTexture(nil, "BACKGROUND")
+        normal:SetAllPoints()
+        local function Set(state)
+            if p.atlas then normal:SetAtlas(p.atlas[state] or p.atlas[1]) else normal:SetTexture(p.file[state] or p.file[1]) end
+        end
+        Set(1)
+        local icon
+        if not p.noIcon then
+            icon = b:CreateTexture(nil, "ARTWORK")
+            icon:SetTexture(PREVIEW_ICON)
+            icon:SetSize(14, 14)
+            icon:SetPoint("CENTER")
+        end
+        if p.atlas and p.atlas[3] then
+            b:SetScript("OnEnter", function() Set(3) end)
+            b:SetScript("OnLeave", function() Set(1) end)
+        else
+            b:SetHighlightTexture(PREVIEW_HOVER, "ADD")
+        end
+        b:SetScript("OnMouseDown", function()
+            Set(2)
+            if icon then icon:SetPoint("CENTER", 1, -1) end
+        end)
+        b:SetScript("OnMouseUp", function()
+            Set(b:IsMouseOver() and p.atlas and p.atlas[3] and 3 or 1)
+            if icon then icon:SetPoint("CENTER", 0, 0) end
+        end)
+        local text = f:CreateFontString(nil, "ARTWORK", "GameFontNormalSmall")
+        text:SetPoint("TOP", b, "BOTTOM", 0, -4)
+        text:SetText(p.label)
+    end
+    previewFrame = f
+end
+
+core:RegisterCommand("bagbuttons", ShowButtonPreview, "preview button styles for Baganator's Currencies button (toggle)")
+
+-- ---------------------------------------------------------------------------
 -- Settings
 -- ---------------------------------------------------------------------------
 function module:BuildSettings(page)
