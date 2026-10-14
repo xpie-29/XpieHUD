@@ -106,6 +106,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.6.1**: Baganator: no gap inside the window's left border (the background now sits 2px in, like the native bag, at any column count).
 - **3.6.0**: Baganator: category sections ("Equipment", "Crafting") as Objective Tracker section headers (gold bar, tracker font, the tracker's -/+ button). New: set each character's Baganator up with an XpieHUD profile through Baganator's own import (profile still to be added). Currencies button lined up with the coin box.
 - **3.5.4**: Baganator: the Currencies button uses the gear's square frame art with its hover and pressed states.
 - **3.5.3**: Baganator: the Currencies button is styled like the gear (gear-sized, no button frame, icon glows on hover) at the bottom-left, with the coin box starting to its right.

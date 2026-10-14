@@ -45,6 +45,7 @@ local BAG_ICON     = "Interface\\Icons\\Inv_misc_bag_08"   -- ContainerFrameComb
 local BORDER_LAYOUT = "HeldBagLayout"
 local PORTRAIT_SIZE, PORTRAIT_X, PORTRAIT_Y = 36, -4, 1
 local TITLE_OFFSET = 35
+local BG_LEFT      = 2      -- background inset from the left edge (PortraitFrameFlatBaseTemplate)
 local GEAR_SIZE    = 24
 local GEAR_X, GEAR_Y = 0, -3   -- from the title area's left edge: tucked against the portrait ring, centred on the title bar (tuned in game)
 local SEARCH_LEFT  = 40     -- search box starts clear of the portrait ring
@@ -388,6 +389,22 @@ local function StyleView(view, kind)
         end
         UpdatePortrait(view)
         view:HookScript("OnShow", UpdatePortrait)
+    end
+    -- Baganator's Blizzard skin insets the background 6px for its own frame
+    -- (and re-applies it on layout and setting changes), which leaves a gap
+    -- inside the thinner HeldBagLayout edge; keep it 2px in, like the native bag.
+    if view.Bg and view.Bg.GetPointByName then
+        local function FixBgLeft(bg)
+            if bg.xpieFixing then return end
+            local point, relativeTo, relativePoint, x, y = bg:GetPointByName("TOPLEFT")
+            if point and x ~= BG_LEFT then
+                bg.xpieFixing = true
+                bg:SetPoint(point, relativeTo, relativePoint, BG_LEFT, y)
+                bg.xpieFixing = false
+            end
+        end
+        hooksecurefunc(view.Bg, "SetPoint", FixBgLeft)
+        FixBgLeft(view.Bg)
     end
     -- The Combined Backpack is a flat portrait frame: no tile streaks.
     if view.TopTileStreaks then Stash(view.TopTileStreaks) end
