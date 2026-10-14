@@ -2,7 +2,7 @@
 ## Title: XpieHUD
 ## Notes: Native quest window quality-of-life and Zygor Guides styling.
 ## Author: Jeremy / Xpie
-## Version: 2.0.0
+## Version: 2.0.1
 ## SavedVariables: XpieHUDDB
 ## Category-enUS: User Interface
 

@@ -105,6 +105,8 @@ local function HandleSlashCommand(input)
         addon:ToggleQuestExtraFrame(arg)
     elseif command == "questscan" then
         addon:ScanQuestVisibleFrames()
+    elseif command == "arrowdebug" then
+        addon:ToggleArrowDebug()
     elseif command == "reset" then
         local now = GetTime()
         if addon.resetPendingUntil and now <= addon.resetPendingUntil then
@@ -114,7 +116,7 @@ local function HandleSlashCommand(input)
             addon:Print("Type |cffffffff/xpiehud reset|r again within 15 seconds to confirm.")
         end
     else
-        addon:Print("Commands: /xpiehud, questreset, questscan, questhide [name], reset")
+        addon:Print("Commands: /xpiehud, questreset, questscan, questhide [name], arrowdebug, reset")
     end
 end
 

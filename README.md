@@ -34,6 +34,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 | `/xhud questreset` | Reset quest window position and size |
 | `/xhud questscan` | List frames still visible during a quest window (arms for the next NPC if none is open) |
 | `/xhud questhide <name>` | Add/remove a frame (case-sensitive) from the fade list |
+| `/xhud arrowdebug` | Report in chat when Zygor's arrow switches away from the gold sprite (troubleshooting) |
 | `/xhud reset` | Reset all settings to defaults (confirm twice) |
 
 ---
@@ -57,6 +58,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 
 ## Version History
 
+- **2.0.1**: `/xhud arrowdebug` diagnostic for the Zygor arrow
 - **2.0.0**: Slimmed down to the quest window features and the Zygor integration (everything else moved to Enhance QoL; full version archived on `archive/full-v1.2.2`). Updated for 12.1.5. Obsolete settings pruned on load.
 - **1.2.2**: Fix ADDON_ACTION_BLOCKED (SetPropagateKeyboardInput) when reloading in combat; quest keys reset to pass-through on key release
 - **1.2.1**: Zygor title logo hidden with the window chrome; Zygor step boxes at 50% opacity

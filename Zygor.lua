@@ -239,6 +239,74 @@ function addon:ApplyZygor()
     ApplyArrow()
 end
 
+-- ---------------------------------------------------------------------------
+-- /xhud arrowdebug: report in chat whenever Zygor's arrow stops drawing our
+-- gold sprite (special icon, error icon, another skin's frame showing).
+-- Hooks stay installed once added; the toggle only mutes/unmutes them.
+-- ---------------------------------------------------------------------------
+local arrowDebug = false
+local arrowDebugHooked = {}
+local lastDebugMsg, lastDebugTime = nil, 0
+
+local function DebugArrow(msg)
+    if not arrowDebug then return end
+    local now = GetTime()
+    if msg == lastDebugMsg and now - lastDebugTime < 1 then return end   -- no spam
+    lastDebugMsg, lastDebugTime = msg, now
+    local Pointer = _G.ZGV and _G.ZGV.Pointer
+    local skin = Pointer and Pointer.CurrentArrowSkin and Pointer.CurrentArrowSkin.id or "?"
+    addon:Print(("|cffffd200[arrow]|r %s  (active skin: %s)"):format(msg, skin))
+end
+
+local function HookArrowFrame(skinId, frame)
+    if not frame or arrowDebugHooked[frame] then return end
+    arrowDebugHooked[frame] = true
+    if frame.ShowSpecial then
+        hooksecurefunc(frame, "ShowSpecial", function(_, spec)
+            DebugArrow(("%s frame: special icon '%s'"):format(skinId, tostring(spec)))
+        end)
+    end
+    if frame.ShowTraveling then
+        hooksecurefunc(frame, "ShowTraveling", function(self)
+            if self.xhudLastSpecial ~= false then
+                self.xhudLastSpecial = false
+                DebugArrow(("%s frame: back to the direction arrow"):format(skinId))
+            end
+        end)
+        hooksecurefunc(frame, "ShowSpecial", function(self) self.xhudLastSpecial = true end)
+    end
+    frame:HookScript("OnShow", function(self)
+        local Pointer = _G.ZGV and _G.ZGV.Pointer
+        if Pointer and Pointer.ArrowFrame ~= self then
+            DebugArrow(("%s frame SHOWN but it is not the active arrow frame"):format(skinId))
+        end
+    end)
+end
+
+function addon:ToggleArrowDebug()
+    local Pointer = _G.ZGV and _G.ZGV.Pointer
+    if not (Pointer and Pointer.ArrowSkins) then
+        self:Print("Zygor isn't loaded.")
+        return
+    end
+    for id, skin in pairs(Pointer.ArrowSkins) do
+        HookArrowFrame(id, skin.frame)   -- skins create their frame on first use
+    end
+    arrowDebug = not arrowDebug
+    lastDebugMsg = nil
+    self:Print("Zygor arrow debug " .. (arrowDebug and "|cff40ff40ON|r: reproduce the flash, then read chat. Run /xhud arrowdebug again to stop."
+        or "|cffff4040OFF|r."))
+    if arrowDebug then
+        local frames = {}
+        for id, skin in pairs(Pointer.ArrowSkins) do
+            if skin.frame then
+                frames[#frames + 1] = ("%s=%s"):format(id, skin.frame:IsShown() and "shown" or "hidden")
+            end
+        end
+        self:Print("Arrow frames: " .. table.concat(frames, ", "))
+    end
+end
+
 -- Frames the quest window may fade (only while this guide is enabled).
 function addon:GetZygorFrames()
     if not Enabled() then return {} end
