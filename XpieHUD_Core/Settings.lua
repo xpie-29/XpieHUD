@@ -10,7 +10,8 @@ local _, addon = ...
 --   page:CheckGrid("Fade while talking:", { { key = ..., label = ... }, ... })
 --   page:Slider({ key = ..., label = ..., description = ..., min, max, step, format })
 --   page:Dropdown({ key = ..., label = ..., values = function() return { { key, label }, ... } end })
---   page:PanelStyle(function() return module.db.panel end)   -- opacity / border / padding
+--   page:TextInput({ key = ..., label = ..., description = ..., maxLetters })
+--   page:PanelStyle(function() return module.db.panel end)   -- look / opacity / header / title / border / padding
 --   page:Button("Reset", onClick)
 --
 -- bind = { get = function(key) end, set = function(key, value) end } connects
@@ -212,9 +213,47 @@ function PageMixin:Dropdown(opt)
     return dropdown
 end
 
--- Background panel controls for a style table from XpieHUD.PANEL_DEFAULTS
--- (opacity / border / padding). The look itself is fixed: Blizzard's dark
--- tooltip panel. getStyle() returns the live table (module.db.panel).
+-- Label + single-line text box. Enter or clicking away saves; Esc cancels.
+function PageMixin:TextInput(opt)
+    local page = self
+    local label = self.content:CreateFontString(nil, "ARTWORK", "GameFontNormal")
+    label:SetPoint("TOPLEFT", 24, self.y - 4)
+    label:SetText(opt.label)
+
+    local box = CreateFrame("EditBox", nil, self.content, "InputBoxTemplate")
+    box:SetPoint("TOPLEFT", 186, self.y + 2)
+    box:SetSize(opt.width or 214, 22)
+    box:SetAutoFocus(false)
+    box:SetMaxLetters(opt.maxLetters or 40)
+    local function Commit(eb)
+        local text = strtrim(eb:GetText() or "")
+        if text ~= page:GetValue(opt) then page:SetValue(opt, text) end
+    end
+    box:SetScript("OnEnterPressed", function(eb) Commit(eb); eb:ClearFocus() end)
+    box:SetScript("OnEditFocusLost", Commit)
+    box:SetScript("OnEscapePressed", function(eb)
+        eb:SetText(page:GetValue(opt) or "")
+        eb:ClearFocus()
+    end)
+    if opt.description then
+        local description = self.content:CreateFontString(nil, "ARTWORK", "GameFontHighlightSmall")
+        description:SetPoint("TOPLEFT", 24, self.y - 26)
+        description:SetWidth(520)
+        description:SetJustifyH("LEFT")
+        description:SetText(opt.description)
+        self.y = self.y - 16
+    end
+    self.refreshers[#self.refreshers + 1] = function()
+        if not box:HasFocus() then box:SetText(page:GetValue(opt) or "") end
+    end
+    self.y = self.y - 34
+    return box
+end
+
+-- Background panel controls for a style table from XpieHUD.PANEL_DEFAULTS.
+-- The art is always Blizzard's (Quest Tracker or Tooltip look); players get
+-- the look, opacity, header/border on-off, title and padding. getStyle()
+-- returns the live table (module.db.panel).
 function PageMixin:PanelStyle(getStyle)
     local function field(key, extra)
         local o = {
@@ -226,9 +265,11 @@ function PageMixin:PanelStyle(getStyle)
     end
 
     self:Header("Background Panel")
-    self:Note("A native dark tooltip-style panel behind the window.")
-    self:Slider(field("opacity", { label = "Background Opacity", description = "How solid the panel's background is.", min = 0, max = 100, step = 5, format = "%d%%" }))
-    self:Checkbox(field("border", { label = "Show Border", description = "Blizzard's tooltip border around the panel." }))
+    self:Dropdown(field("look", { label = "Look", values = function() return addon.PANEL_LOOKS end }))
+    self:Slider(field("opacity", { label = "Background Opacity", description = "How solid the panel's background is (like Edit Mode's Background Opacity). The header bar stays solid.", min = 0, max = 100, step = 5, format = "%d%%" }))
+    self:Checkbox(field("header", { label = "Show Header Bar", description = "Quest Tracker look: the gold objective header bar above the window." }))
+    self:TextInput(field("title", { label = "Header Title", description = "Text on the header bar. Leave empty for no title.", maxLetters = 40 }))
+    self:Checkbox(field("border", { label = "Show Border", description = "Tooltip look: Blizzard's tooltip border around the panel." }))
     self:Slider(field("padding", { label = "Padding", description = "Space between the window and the panel's edges. Negative values pull the panel inside the window.", min = -10, max = 30, step = 1, format = "%d" }))
     self:Button("Reset Panel", function()
         local style = getStyle()

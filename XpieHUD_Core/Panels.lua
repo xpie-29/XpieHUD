@@ -2,40 +2,72 @@
 -- Native background panels that modules attach behind other addons' frames
 -- (e.g. the Zygor guide window).
 --
--- XpieHUD's look IS the native look: a panel is built exactly like Blizzard's
--- dark tooltips (NineSlicePanelTemplate + the "TooltipDefaultDarkLayout"
--- atlas border, tooltip background/border colours). Players get a few
--- native-safe controls, not colour pickers:
+-- XpieHUD's look IS the native look. A panel is built from Blizzard's own art,
+-- exactly the way Blizzard builds the matching HUD element (checked in 12.1.5):
 --
---   opacity  0-100   background opacity
---   border   bool    show the tooltip border
+--   "tracker" (default)  the Objective Tracker: body is the Edit Mode
+--                        background (NineSlicePanelTemplate, UniqueCornersLayout
+--                        + texture kit "common-opacity-background", faded with
+--                        SetAlpha like Edit Mode's Background Opacity), with the
+--                        gold "ui-questtracker-primary-objective-header" bar on top.
+--   "tooltip"            Blizzard's dark tooltip (TooltipDefaultDarkLayout,
+--                        TOOLTIP_DEFAULT_BACKGROUND_COLOR / TOOLTIP_DEFAULT_COLOR).
+--
+-- Players get a few native-safe controls, not colour pickers:
+--   look     "tracker" | "tooltip"
+--   opacity  0-100   body opacity (the header bar stays solid)
+--   header   bool    gold header bar (tracker look)
+--   border   bool    tooltip border (tooltip look)
 --   padding  px      space around the attached window (negative = inside)
+--   title    string  text on the header bar ("" = none), in the tracker's header font
 --
 --   local panel = XpieHUD:CreatePanel()
 --   panel:Attach(targetFrame)   -- sits behind target, resizes/fades with it
---   panel:SetStyle(style)       -- { opacity, border, padding }
+--   panel:SetStyle(style)       -- the fields above
 --   panel:SetActive(true/false) -- show/hide (still follows target visibility)
 
 local _, addon = ...
 
-local LAYOUT = "TooltipDefaultDarkLayout"
+local TRACKER_LAYOUT = "UniqueCornersLayout"
+local TRACKER_KIT    = "common-opacity-background"
+local TRACKER_PROBE  = TRACKER_KIT .. "-NineSlice-Center"   -- one of the kit's atlases
+local TRACKER_HEADER = "ui-questtracker-primary-objective-header"
+local TOOLTIP_LAYOUT = "TooltipDefaultDarkLayout"
 
-local function BackgroundColor()
+local function AtlasExists(name)
+    return C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(name) ~= nil
+end
+
+-- If a patch renames the tracker art, fall back to the tooltip look rather
+-- than drawing a broken panel.
+local function TrackerAvailable()
+    return AtlasExists(TRACKER_PROBE) and AtlasExists(TRACKER_HEADER)
+end
+
+local function TooltipBackgroundColor()
     local c = TOOLTIP_DEFAULT_BACKGROUND_COLOR
     if c then return c:GetRGB() end
     return 0.09, 0.09, 0.19
 end
 
-local function BorderColor()
+local function TooltipBorderColor()
     local c = TOOLTIP_DEFAULT_COLOR
     if c then return c:GetRGB() end
     return 1, 1, 1
 end
 
 addon.PANEL_DEFAULTS = {
+    look    = "tracker",
+    title   = "Leveling Guide",   -- header bar text; "" for none
     opacity = 80,    -- %
-    border  = true,
+    header  = true,  -- tracker look
+    border  = true,  -- tooltip look
     padding = 6,     -- px
+}
+
+addon.PANEL_LOOKS = {
+    { key = "tracker", label = "Quest Tracker" },
+    { key = "tooltip", label = "Tooltip" },
 }
 
 -- Settings saved by 3.1.0's texture/colour editor: back to the native defaults.
@@ -48,15 +80,51 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Panel object
+--   frame         container (no art), anchored around the target
+--   trackerBody   Edit Mode tracker background   } one of the two is shown
+--   tooltipBody   dark tooltip                   }
+--   headerFrame   gold header bar, one level above the bodies
 -- ---------------------------------------------------------------------------
 local PanelMixin = {}
 
 function addon:CreatePanel()
-    local frame = CreateFrame("Frame", nil, UIParent, "NineSlicePanelTemplate")
+    local frame = CreateFrame("Frame", nil, UIParent)
     frame:Hide()
     frame:EnableMouse(false)   -- backgrounds never eat clicks
-    NineSliceUtil.ApplyLayoutByName(frame, LAYOUT)
-    return Mixin({ frame = frame, active = false }, PanelMixin)
+
+    local trackerBody = CreateFrame("Frame", nil, frame, "NineSlicePanelTemplate")
+    trackerBody:SetAllPoints()
+    NineSliceUtil.ApplyLayoutByName(trackerBody, TRACKER_LAYOUT, TRACKER_KIT)
+
+    local tooltipBody = CreateFrame("Frame", nil, frame, "NineSlicePanelTemplate")
+    tooltipBody:SetAllPoints()
+    NineSliceUtil.ApplyLayoutByName(tooltipBody, TOOLTIP_LAYOUT)
+
+    local headerFrame = CreateFrame("Frame", nil, frame)
+    headerFrame:SetPoint("TOPLEFT")
+    headerFrame:SetPoint("TOPRIGHT")
+    local header = headerFrame:CreateTexture(nil, "BACKGROUND")
+    header:SetAllPoints()
+    header:SetAtlas(TRACKER_HEADER, false)   -- stretched to the panel's width
+    local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(TRACKER_HEADER)
+    headerFrame:SetHeight(info and info.height or 32)
+
+    -- Title in the Objective Tracker's own header font ("All Objectives"),
+    -- placed like Blizzard's: left-aligned, 7px in, one line, truncated.
+    local title = headerFrame:CreateFontString(nil, "ARTWORK")
+    title:SetFontObject(_G.ObjectiveTrackerHeaderFont or GameFontNormalMed2 or GameFontNormal)
+    title:SetPoint("LEFT", 7, 0)
+    title:SetPoint("RIGHT", -8, 0)
+    title:SetJustifyH("LEFT")
+    title:SetWordWrap(false)
+    title:SetMaxLines(1)
+
+    for _, f in ipairs({ trackerBody, tooltipBody, headerFrame }) do f:EnableMouse(false) end
+
+    return Mixin({
+        frame = frame, trackerBody = trackerBody, tooltipBody = tooltipBody,
+        headerFrame = headerFrame, title = title, active = false,
+    }, PanelMixin)
 end
 
 local function SyncShown(panel)
@@ -66,7 +134,7 @@ end
 
 -- Sit behind `target` and follow its size. The panel is parented to the
 -- target's parent (so it fades and scales with that frame tree), uses the
--- target's strata one frame level below it, and follows its visibility.
+-- target's strata below it, and follows its visibility.
 function PanelMixin:Attach(target)
     if self.target == target then return end
     self.target = target
@@ -85,26 +153,57 @@ function PanelMixin:ApplyAnchors()
     local target, style = self.target, self.style
     if not (target and style) then return end
     local pad = style.padding or 0
+    -- The header bar sits above the target (like a tracker section header
+    -- above its content), so the panel grows upward by the bar's height.
+    local headerSpace = self.headerFrame:IsShown() and self.headerFrame:GetHeight() or 0
     local f = self.frame
     f:ClearAllPoints()
-    f:SetPoint("TOPLEFT", target, "TOPLEFT", -pad, pad)
+    f:SetPoint("TOPLEFT", target, "TOPLEFT", -pad, pad + headerSpace)
     f:SetPoint("BOTTOMRIGHT", target, "BOTTOMRIGHT", pad, -pad)
 end
 
+-- Bodies two levels below the target, the header bar one below: everything
+-- stays behind the target's own content.
 function PanelMixin:ApplyLayer()
     local target = self.target
     if not target then return end
-    self.frame:SetFrameStrata(target:GetFrameStrata())
-    self.frame:SetFrameLevel(math.max(0, target:GetFrameLevel() - 1))
+    local strata = target:GetFrameStrata()
+    local base = math.max(0, target:GetFrameLevel() - 2)
+    for _, f in ipairs({ self.frame, self.trackerBody, self.tooltipBody, self.headerFrame }) do
+        f:SetFrameStrata(strata)
+    end
+    self.frame:SetFrameLevel(base)
+    self.trackerBody:SetFrameLevel(base)
+    self.tooltipBody:SetFrameLevel(base)
+    self.headerFrame:SetFrameLevel(base + 1)
 end
 
 function PanelMixin:SetStyle(style)
     self.style = style
-    local f = self.frame
-    local r, g, b = BackgroundColor()
-    f:SetCenterColor(r, g, b, (style.opacity or 80) / 100)
-    local br, bg, bb = BorderColor()
-    f:SetBorderColor(br, bg, bb, style.border and 1 or 0)
+    local opacity = (style.opacity or 80) / 100
+    local tracker = style.look ~= "tooltip" and TrackerAvailable()
+    if style.look ~= "tooltip" and not tracker and not addon.warnedTrackerArt then
+        addon.warnedTrackerArt = true
+        addon:Print("The Quest Tracker panel art wasn't found in this game version; using the Tooltip look instead.")
+    end
+
+    self.trackerBody:SetShown(tracker)
+    self.headerFrame:SetShown(tracker and style.header)
+    local text = style.title or ""
+    self.title:SetText(text)
+    self.title:SetShown(text ~= "")
+    self.tooltipBody:SetShown(not tracker)
+
+    if tracker then
+        -- Same as Edit Mode's Background Opacity on the Objective Tracker.
+        self.trackerBody:SetAlpha(opacity)
+    else
+        local r, g, b = TooltipBackgroundColor()
+        self.tooltipBody:SetCenterColor(r, g, b, opacity)
+        local br, bg, bb = TooltipBorderColor()
+        self.tooltipBody:SetBorderColor(br, bg, bb, style.border and 1 or 0)
+    end
+
     self:ApplyAnchors()
     self:ApplyLayer()
 end
