@@ -39,11 +39,12 @@ local BORDER_LAYOUT = "HeldBagLayout"
 local PORTRAIT_SIZE, PORTRAIT_X, PORTRAIT_Y = 36, -4, 1
 local TITLE_OFFSET = 35
 local GEAR_SIZE    = 24
-local GEAR_X       = 4      -- from the title area's left edge, i.e. just right of the portrait
+local GEAR_X, GEAR_Y = 0, -3   -- from the title area's left edge: tucked against the portrait ring, centred on the title bar (tuned in game)
 local SEARCH_LEFT  = 40     -- search box starts clear of the portrait ring
 local SORT_W, SORT_H = 28, 26                              -- BagItemAutoSortButton
 local SORT_GAP     = 4
-local SMALL_BUTTON = 22                                     -- flattened icon buttons
+local SMALL_BUTTON = 18       -- flattened icon buttons: fit inside the coin box
+local SMALL_GLOW   = 16       -- their hover glow, kept inside the button
 local COINBOX_H    = 17                                     -- ContainerMoneyFrameTemplate.Border
 local COINBOX_INSET = 8
 
@@ -131,6 +132,10 @@ local function Flatten(button)
         if button[key] then Stash(button[key]) end
     end
     button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
+    local glow = button:GetHighlightTexture()
+    glow:ClearAllPoints()
+    glow:SetPoint("CENTER")
+    glow:SetSize(SMALL_GLOW, SMALL_GLOW)
     button:SetSize(SMALL_BUTTON, SMALL_BUTTON)
     -- Baganator's tooltip opens to the right, over the items; show it below
     -- the window instead.
@@ -255,9 +260,9 @@ local function CreateGear(view)
     gear:SetScript("OnMouseDown", function() icon:SetAtlas("common-dropdown-a-button-settings-pressed-shadowless") end)
     gear:SetScript("OnMouseUp", function() icon:SetAtlas("common-dropdown-a-button-settings-shadowless") end)
     if view.TitleContainer then
-        gear:SetPoint("LEFT", view.TitleContainer, "LEFT", GEAR_X, 0)
+        gear:SetPoint("LEFT", view.TitleContainer, "LEFT", GEAR_X, GEAR_Y)
     else
-        gear:SetPoint("TOPLEFT", view, "TOPLEFT", TITLE_OFFSET + GEAR_X, 2)
+        gear:SetPoint("TOPLEFT", view, "TOPLEFT", TITLE_OFFSET + GEAR_X, 2 + GEAR_Y)
     end
     -- Above the frame's border art (the NineSlice sits high, at the title bar).
     local border = view.NineSlice and view.NineSlice:GetFrameLevel() or view:GetFrameLevel()
