@@ -163,10 +163,11 @@ local hideGroups = {
     { key = "questHideMinimap", frames = function()
         return Collect({}, MinimapCluster)
     end },
-    -- Zygor's viewer and arrow (empty when the Zygor integration is off).
-    -- Key kept as questHideRXP (its pre-2.0 name) so the saved choice carries over.
+    -- "Guide Addons": frames offered by installed modules (Zygor's viewer and
+    -- arrow, ...). Key kept as questHideRXP (its pre-2.0 name) so the saved
+    -- choice carries over.
     { key = "questHideRXP", frames = function()
-        return Collect({}, unpack(addon:GetZygorFrames()))
+        return Collect({}, unpack(addon:GetModuleFadeFrames()))
     end },
     { key = "questHideBuffs", frames = function()
         return Collect({}, BuffFrame, DebuffFrame)

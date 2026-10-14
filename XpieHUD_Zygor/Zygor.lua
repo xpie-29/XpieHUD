@@ -1,29 +1,54 @@
--- Zygor.lua  (XpieHUD)
+-- Zygor.lua  (XpieHUD_Zygor module)
 -- Zygor Guides Viewer integration:
 --   * strip the viewer window's backgrounds and borders
 --   * step boxes keep Zygor's state colours at 50% opacity, without edges
 --   * "XpieHUD Gold" arrow skin: our gold arrowhead as a native Zygor arrow skin
 --
--- Zygor internals used (checked against Zygor 9.6 retail):
+-- Zygor internals used (checked against Zygor 9.6 retail, 12.1.5):
 --   _G.ZGV, ZGV.Frame (ZygorGuidesViewerFrame, skin "default")
 --   ZGV.Frame:ApplySkin()            Skins/Default/Skin.lua   (window backdrops)
 --   ZGV.Frame.Border / .Border.Back / .Border.TabContainer / .Border.Toolbar
 --   ZGV_DefaultSkin_DefaultStep_Mixin:ApplySkin / :SetBackgroundForStep
 --   ZGV.Pointer:AddArrowSkin / :SetArrowSkin, sprite arrows (Arrows/ArrowSkin.lua)
 -- Zygor isn't secure code, so hooking it can't taint Blizzard's UI.
+--
+-- Load order: "XpieHUD_Zygor" sorts before "ZygorGuidesViewer", so this file
+-- runs before Zygor's and can hook its step mixin before Zygor builds its
+-- window (on Zygor's ADDON_LOADED below).
 
-local _, addon = ...
+local core = XpieHUD
 
 local STEP_BG_ALPHA = 0.5                   -- step box tint (readable on dark ground)
 local SKIN_ID       = "XpieHUD"
 local SKIN_NAME     = "XpieHUD Gold"
-local MEDIA_DIR     = "Interface\\AddOns\\XpieHUD\\Media\\Zygor\\"
+local MEDIA_DIR     = "Interface\\AddOns\\XpieHUD_Zygor\\Media\\"
+
+local module = core:RegisterModule("zygor", {
+    title = "Zygor Guides",
+    defaults = {
+        enabled   = true,   -- master switch (unticking restores Zygor's own look)
+        strip     = true,   -- transparent window chrome, step boxes at 50%
+        goldArrow = true,   -- "XpieHUD Gold" arrow skin
+        -- prevArrowSkin: the Zygor arrow skin to restore when goldArrow is off
+    },
+    -- 2.x kept these at the top level of XpieHUDDB; moved in on first run.
+    Migrate = function(_, root, db)
+        local moves = { guideZygor = "enabled", zygorStrip = "strip",
+                        zygorGoldArrow = "goldArrow", zygorPrevArrowSkin = "prevArrowSkin" }
+        for old, new in pairs(moves) do
+            if root[old] ~= nil then
+                db[new] = root[old]
+                root[old] = nil
+            end
+        end
+    end,
+})
 
 local function Enabled()
-    return XpieHUDDB and XpieHUDDB.guideZygor and _G.ZGV ~= nil
+    return module.db and module.db.enabled and _G.ZGV ~= nil
 end
 local function StripOn()
-    return Enabled() and XpieHUDDB.zygorStrip
+    return Enabled() and module.db.strip
 end
 
 -- ---------------------------------------------------------------------------
@@ -120,9 +145,9 @@ end
 
 -- ---------------------------------------------------------------------------
 -- Arrow skin
--- 1024x1024 sprite sheet (Media/Zygor/arrow.tga): 160 frames of the gold
--- arrowhead, 2.25 deg apart counter-clockwise, in 96x64 cells (Zygor's arrow
--- texture is 50x33, same 1.5 aspect, so the arrowhead shows ~33px tall).
+-- 1024x1024 sprite sheet (Media/arrow.tga): 160 frames of the gold arrowhead,
+-- 2.25 deg apart counter-clockwise, in 96x64 cells (Zygor's arrow texture is
+-- 50x33, same 1.5 aspect, so the arrowhead shows ~33px tall).
 -- ---------------------------------------------------------------------------
 local function RegisterArrowSkin()
     local ZGV = _G.ZGV
@@ -144,7 +169,7 @@ local function RegisterArrowSkin()
         texture = MEDIA_DIR .. "arrow",
         template = "ZygorGuidesViewerFrame_ArrowSkin_Template",
     }
-    -- Arrived / stairs / taxi / ship icons: reuse Zygor's Stealth set.
+    -- Stairs / taxi / ship / waiting / error icons: reuse Zygor's Stealth set.
     skin.icons = {
         here = { 1, 1, 40, 40 }, upstairs = { 2, 1, 60, 60 }, error = { 3, 1, 40, 40 },
         instance = { 4, 1, 40, 40 }, taxi = { 5, 1, 40, 40 }, ship = { 6, 1, 40, 40 },
@@ -185,18 +210,19 @@ local function ApplyArrow()
         return
     end
     if InCombatLockdown() then   -- the arrow frame uses a secure state driver
-        addon.applyPending = true
+        core.applyPending = true
         return
     end
 
-    local want = Enabled() and XpieHUDDB.zygorGoldArrow
+    local db = module.db
+    local want = Enabled() and db.goldArrow
     local current = profile.arrowskin
     if want and current ~= SKIN_ID then
-        XpieHUDDB.zygorPrevArrowSkin = current
+        db.prevArrowSkin = current
         Pointer:SetArrowSkin(SKIN_ID)
         Pointer:UpdateArrowVisibility()
     elseif not want and current == SKIN_ID then
-        local prev = XpieHUDDB.zygorPrevArrowSkin
+        local prev = db.prevArrowSkin
         if not (prev and Pointer.ArrowSkins[prev]) then prev = "Starlight" end
         Pointer:SetArrowSkin(prev)
         Pointer:UpdateArrowVisibility()
@@ -204,20 +230,12 @@ local function ApplyArrow()
 end
 
 -- ---------------------------------------------------------------------------
--- Public API
+-- Module hooks (called by the core)
 -- ---------------------------------------------------------------------------
--- Called from Core.lua on ADDON_LOADED("ZygorGuidesViewer"), before Zygor
--- builds its window: register the arrow skin and hook the step mixin.
-function addon:OnZygorLoaded()
-    if not _G.ZGV then return end
-    RegisterArrowSkin()
-    HookStepMixin()
-end
-
 local frameHooked = false
 local stripped = false
 
-function addon:ApplyZygor()
+function module:Apply()
     local ZGV = _G.ZGV
     if not ZGV then return end
     RegisterArrowSkin()
@@ -253,6 +271,58 @@ function addon:ApplyZygor()
     ApplyArrow()
 end
 
+-- Zygor starts up in a background thread after login; catch its window and
+-- arrow once they exist.
+function module:OnLogin()
+    for _, delay in ipairs({ 1, 3, 6, 12 }) do
+        C_Timer.After(delay, function()
+            if core.ready then module:Apply() end
+        end)
+    end
+end
+
+-- Frames the quest window's "Guide Addons" fade group may fade.
+function module:GetFadeFrames()
+    if not Enabled() then return {} end
+    local list = {}
+    for _, name in ipairs({ "ZygorGuidesViewerFrameMaster", "ZygorGuidesViewerPointer_ArrowCtrl" }) do
+        if _G[name] then list[#list + 1] = _G[name] end
+    end
+    return list
+end
+
+function module:BuildSettings(page)
+    page:Status(function()
+        return C_AddOns.IsAddOnLoaded("ZygorGuidesViewer") and "" or "(Zygor Guides Viewer not loaded)"
+    end)
+    page:Note("Styles Zygor Guides Viewer to match the native UI. Disable the XpieHUD_Zygor addon to remove this page completely.")
+    page:Checkbox({ key = "enabled",   label = "Enable Zygor Integration",    description = "Unticking puts back everything XpieHUD changed and leaves Zygor alone." })
+    page:Checkbox({ key = "strip",     label = "Strip Backgrounds & Borders", description = "Transparent Zygor window background and borders; step boxes keep their colours at 50% opacity; title logo hidden." })
+    page:Checkbox({ key = "goldArrow", label = "Gold Waypoint Arrow",         description = "Use the XpieHUD gold arrowhead as Zygor's arrow skin (also selectable as \"XpieHUD Gold\" in Zygor's own options)." })
+end
+
+-- ---------------------------------------------------------------------------
+-- Hook Zygor as it loads: register the arrow skin and hook the step mixin
+-- before Zygor builds its window.
+-- ---------------------------------------------------------------------------
+local function OnZygorLoaded()
+    if not _G.ZGV then return end
+    RegisterArrowSkin()
+    HookStepMixin()
+end
+
+local loader = CreateFrame("Frame")
+loader:RegisterEvent("ADDON_LOADED")
+loader:SetScript("OnEvent", function(self, _, name)
+    if name == "ZygorGuidesViewer" then
+        OnZygorLoaded()
+        self:UnregisterEvent("ADDON_LOADED")
+    end
+end)
+-- Zygor normally loads after us (alphabetical); if it somehow loaded first,
+-- hook it now.
+if C_AddOns.IsAddOnLoaded("ZygorGuidesViewer") then OnZygorLoaded() end
+
 -- ---------------------------------------------------------------------------
 -- /xhud arrowdebug: report in chat whenever Zygor's arrow stops drawing our
 -- gold sprite (special icon, error icon, another skin's frame showing).
@@ -269,7 +339,7 @@ local function DebugArrow(msg)
     lastDebugMsg, lastDebugTime = msg, now
     local Pointer = _G.ZGV and _G.ZGV.Pointer
     local skin = Pointer and Pointer.CurrentArrowSkin and Pointer.CurrentArrowSkin.id or "?"
-    addon:Print(("|cffffd200[arrow]|r %s  (active skin: %s)"):format(msg, skin))
+    core:Print(("|cffffd200[arrow]|r %s  (active skin: %s)"):format(msg, skin))
 end
 
 local function HookArrowFrame(skinId, frame)
@@ -297,10 +367,10 @@ local function HookArrowFrame(skinId, frame)
     end)
 end
 
-function addon:ToggleArrowDebug()
+core:RegisterCommand("arrowdebug", function()
     local Pointer = _G.ZGV and _G.ZGV.Pointer
     if not (Pointer and Pointer.ArrowSkins) then
-        self:Print("Zygor isn't loaded.")
+        core:Print("Zygor isn't loaded.")
         return
     end
     for id, skin in pairs(Pointer.ArrowSkins) do
@@ -308,7 +378,7 @@ function addon:ToggleArrowDebug()
     end
     arrowDebug = not arrowDebug
     lastDebugMsg = nil
-    self:Print("Zygor arrow debug " .. (arrowDebug and "|cff40ff40ON|r: reproduce the flash, then read chat. Run /xhud arrowdebug again to stop."
+    core:Print("Zygor arrow debug " .. (arrowDebug and "|cff40ff40ON|r: reproduce the problem, then read chat. Run /xhud arrowdebug again to stop."
         or "|cffff4040OFF|r."))
     if arrowDebug then
         local frames = {}
@@ -317,26 +387,6 @@ function addon:ToggleArrowDebug()
                 frames[#frames + 1] = ("%s=%s"):format(id, skin.frame:IsShown() and "shown" or "hidden")
             end
         end
-        self:Print("Arrow frames: " .. table.concat(frames, ", "))
+        core:Print("Arrow frames: " .. table.concat(frames, ", "))
     end
-end
-
--- Frames the quest window may fade (only while this guide is enabled).
-function addon:GetZygorFrames()
-    if not Enabled() then return {} end
-    local list = {}
-    for _, name in ipairs({ "ZygorGuidesViewerFrameMaster", "ZygorGuidesViewerPointer_ArrowCtrl" }) do
-        if _G[name] then list[#list + 1] = _G[name] end
-    end
-    return list
-end
-
--- Zygor starts up in a background thread after login; catch its window and
--- arrow once they exist.
-function addon:ScheduleZygorInit()
-    for _, delay in ipairs({ 1, 3, 6, 12 }) do
-        C_Timer.After(delay, function()
-            if addon.ready then addon:ApplyZygor() end
-        end)
-    end
-end
+end, "Report Zygor arrow state changes in chat (troubleshooting)")

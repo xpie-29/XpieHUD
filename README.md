@@ -1,8 +1,19 @@
 # XpieHUD
 
-A lightweight World of Warcraft addon: quality-of-life for Blizzard's **native** quest windows, plus Zygor Guides styling to match. Built for Retail (Midnight, 12.1.5).
+A lightweight World of Warcraft addon: quality-of-life for Blizzard's **native** quest windows, with optional extensions that style guide addons to match. Built for Retail (Midnight, 12.1.5).
 
 General HUD hiding (chat, minimap, bars, menus) now lives in Enhance QoL. The original all-in-one XpieHUD, with visibility controls, the chat/meter toggle and the RestedXP integration, is preserved on the [`archive/full-v1.2.2`](https://github.com/xpie-29/XpieHUD/tree/archive/full-v1.2.2) branch.
+
+## Structure
+
+XpieHUD is a core addon plus optional extensions. Each extension is its own addon folder, so you only load what you use, and each adds its own page under **XpieHUD** in the settings panel.
+
+| Folder | What it is |
+|---|---|
+| `XpieHUD/` | Core: quest window features, settings panel, module registry |
+| `XpieHUD_Zygor/` | Extension: Zygor Guides styling and the gold waypoint arrow (requires XpieHUD) |
+
+Writing an extension: see the `RegisterModule` notes at the top of `XpieHUD/Core.lua`.
 
 ## Features
 
@@ -19,10 +30,10 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
   - All other keys pass through, so movement and camera still work. PvP quests and quests that cost gold still need a click.
 - **Number Badges & Key Hints**: quests keep their native icon (!, ?, daily, campaign...) with a small number on it; gossip options show the number over a dimmed icon; reward choices get a number in the corner. Also adds small "Space" / "Esc" hints beside the window's own buttons (can be turned off).
 
-### Zygor Guides
+### Zygor Guides (`XpieHUD_Zygor`)
 - **Strip Backgrounds & Borders**: transparent Zygor window background, borders, tab strip and toolbar, title logo hidden; step boxes keep Zygor's state colours (normal, complete, unavailable) at 50% opacity without edges. Survives Zygor skin changes.
-- **Gold Waypoint Arrow**: a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `Media/Zygor/arrow.tga`: 160 pre-rotated frames). The "you're here" marker is the gold arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
-- **Enable Zygor Integration** switch: unticking puts back everything XpieHUD changed and leaves Zygor alone.
+- **Gold Waypoint Arrow**: a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`: 160 pre-rotated frames). The "you're here" marker is the gold arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
+- **Enable Zygor Integration** switch: unticking puts back everything XpieHUD changed and leaves Zygor alone. Disabling the `XpieHUD_Zygor` addon removes it completely.
 
 ---
 
@@ -34,7 +45,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 | `/xhud questreset` | Reset quest window position and size |
 | `/xhud questscan` | List frames still visible during a quest window (arms for the next NPC if none is open) |
 | `/xhud questhide <name>` | Add/remove a frame (case-sensitive) from the fade list |
-| `/xhud arrowdebug` | Report in chat when Zygor's arrow switches away from the gold sprite (troubleshooting) |
+| `/xhud arrowdebug` | (Zygor extension) Report in chat when Zygor's arrow switches away from the gold sprite |
 | `/xhud reset` | Reset all settings to defaults (confirm twice) |
 
 ---
@@ -42,13 +53,15 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 ## Installation
 
 1. Download the latest release zip
-2. Extract the `XpieHUD` folder (including its `Media` subfolder) into your `World of Warcraft/_retail_/Interface/AddOns/` directory
+2. Copy the `XpieHUD` folder, plus any extension folders you want (e.g. `XpieHUD_Zygor`), into `World of Warcraft/_retail_/Interface/AddOns/`. Each must sit directly in `AddOns`, not inside another folder.
 3. Restart WoW (a `/reload` is enough when no files were added)
+
+Upgrading from 2.x: delete the old `AddOns/XpieHUD` folder first (its `Media` folder and files moved). Your settings carry over, including Zygor's.
 
 ## Requirements
 
 - World of Warcraft Retail (Midnight, Interface 120105)
-- Optional: Zygor Guides Viewer for the Zygor features
+- Optional: Zygor Guides Viewer, for the `XpieHUD_Zygor` extension
 
 ## Notes
 
@@ -58,6 +71,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 
 ## Version History
 
+- **3.0.0**: Modular layout: `XpieHUD` core (quest window, settings, module registry) plus the `XpieHUD_Zygor` extension addon. Each extension gets its own settings sub-page; Zygor settings migrate automatically.
 - **2.0.2**: Zygor "you're here" marker uses the gold arrowhead pointing down instead of Zygor's green arrow (it flickered in when flying over a waypoint)
 - **2.0.1**: `/xhud arrowdebug` diagnostic for the Zygor arrow
 - **2.0.0**: Slimmed down to the quest window features and the Zygor integration (everything else moved to Enhance QoL; full version archived on `archive/full-v1.2.2`). Updated for 12.1.5. Obsolete settings pruned on load.
