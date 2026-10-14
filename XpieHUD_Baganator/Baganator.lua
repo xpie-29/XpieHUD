@@ -47,6 +47,11 @@ local SMALL_BUTTON = 18       -- flattened icon buttons: fit inside the coin box
 local SMALL_GLOW   = 16       -- their hover glow, kept inside the button
 local COINBOX_H    = 17                                     -- ContainerMoneyFrameTemplate.Border
 local COINBOX_INSET = 8
+-- Currencies button: same size as the gear, bottom-left, centred on the
+-- coin box, which starts just right of it.
+local CURRENCY_SIZE, CURRENCY_ICON = 24, 20
+local CURRENCY_X   = 6
+local COINBOX_GAP  = 2
 
 -- Gear menu entries, in menu order: Baganator button tag -> label.
 local MENU_ITEMS = {
@@ -64,7 +69,7 @@ for _, item in ipairs(MENU_ITEMS) do MENU_TAGS[item.tag] = true end
 -- Removed outright, no menu entry.
 local REMOVED_TAGS = { customise = true, bagSlots = true }
 -- Kept where Baganator puts them, flattened to native-size icon buttons.
-local FLAT_TAGS = { currency = true, collapsingBagSection = true }
+local FLAT_TAGS = { collapsingBagSection = true }
 -- Windows that get the Combined Backpack treatment (ButtonFrame tags).
 local VIEW_TAGS = { backpack = true, bank = true, guild = true }
 
@@ -145,6 +150,47 @@ local function Flatten(button)
             GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -6)
         end
     end)
+end
+
+-- ---------------------------------------------------------------------------
+-- Currencies button: styled like the gear (no button frame, gear-sized, the
+-- icon itself glows on hover and sinks on press), bottom-left, with the coin
+-- box running from its right edge.
+-- ---------------------------------------------------------------------------
+local function PlaceCurrency(button)
+    if button.xpiePlacing then return end
+    button.xpiePlacing = true
+    button:ClearAllPoints()
+    button:SetPoint("BOTTOMLEFT", button:GetParent(), "BOTTOMLEFT", CURRENCY_X,
+        COINBOX_INSET + (COINBOX_H - CURRENCY_SIZE) / 2)
+    button.xpiePlacing = false
+end
+
+local function StyleCurrency(button)
+    if button.xpieCurrency then return end
+    button.xpieCurrency = true
+    Flatten(button)   -- drops the red art, keeps the tooltip below the window
+    button:SetSize(CURRENCY_SIZE, CURRENCY_SIZE)
+
+    local icon = button.Icon
+    if icon then
+        icon:SetSize(CURRENCY_ICON, CURRENCY_ICON)
+        button:SetHighlightTexture(icon:GetTexture(), "ADD")
+        local glow = button:GetHighlightTexture()
+        glow:ClearAllPoints()
+        glow:SetPoint("CENTER")
+        glow:SetSize(CURRENCY_ICON, CURRENCY_ICON)
+        glow:SetAlpha(0.4)
+        button:HookScript("OnMouseDown", function()
+            icon:SetPoint("CENTER", 1, -1)
+        end)
+        button:HookScript("OnMouseUp", function()
+            icon:SetPoint("CENTER", 0, 0)
+        end)
+    end
+
+    hooksecurefunc(button, "SetPoint", PlaceCurrency)
+    PlaceCurrency(button)
 end
 
 -- ---------------------------------------------------------------------------
@@ -274,7 +320,9 @@ end
 local function CreateCoinBox(view)
     local box = CreateFrame("Frame", nil, view)
     box:SetHeight(COINBOX_H)
-    box:SetPoint("BOTTOMLEFT", COINBOX_INSET, COINBOX_INSET)
+    -- Starts right of the Currencies button when the window has one.
+    local left = FindButton(view, "currency") and (CURRENCY_X + CURRENCY_SIZE + COINBOX_GAP) or COINBOX_INSET
+    box:SetPoint("BOTTOMLEFT", left, COINBOX_INSET)
     box:SetPoint("BOTTOMRIGHT", -COINBOX_INSET, COINBOX_INSET)
     local function Piece(atlas)
         local t = box:CreateTexture(nil, "BACKGROUND")
@@ -338,6 +386,9 @@ local function OnFrame(details)
         elseif HasTag(tags, { sort = true }) then
             Stash(region)
             if not CreateSortButton(region) then pendingSorts[region] = true end
+        elseif HasTag(tags, { currency = true }) then
+            taggedButtons[region] = "currency"
+            StyleCurrency(region)
         elseif HasTag(tags, FLAT_TAGS) then
             Flatten(region)
         end
