@@ -16,6 +16,7 @@ XpieHUD is one **core** addon plus optional **extensions**. Each extension is a 
 |---|---|
 | **XpieHUD Core** (`XpieHUD_Core/`) | Required. The quest window features, the settings panel, and the shared systems extensions build on. Useful on its own. |
 | **XpieHUD - Zygor Guides** (`XpieHUD_Zygor/`) | Optional extension, requires XpieHUD Core and Zygor Guides Viewer. Gives Zygor the XpieHUD style. |
+| **XpieHUD - Baganator** (`XpieHUD_Baganator/`) | Optional extension, requires XpieHUD Core and Baganator. Gives Baganator's bag, bank and guild bank windows the look of Blizzard's Combined Backpack. |
 
 ### What XpieHUD Core provides
 
@@ -55,6 +56,17 @@ Choose a **Style**:
   - **Gold Waypoint Arrow** (can be turned off): a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`, 160 pre-rotated frames). The "you're here" marker is the same arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
 - **Original**: leaves Zygor's look completely alone. Disabling the extension in the AddOns list removes it entirely.
 
+### Baganator (XpieHUD - Baganator)
+Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > Theme):
+- **XpieHUD** (default): the bag, bank and guild bank windows follow Blizzard's Combined Backpack.
+  - The **round portrait** is back in the top-left corner (the bag icon, or the banker at the bank).
+  - One **native gear menu** right of the portrait holds Baganator's extra buttons: All Characters, Bank, Guild Bank, Search Everywhere, Saved Searches, Transfer Items and Search Help. Each still does exactly what Baganator's button did.
+  - The **Customise** button is gone (Baganator's settings open from its minimap/addon compartment button), and so is the **Bag Slots** button: the native bag bar stays on screen and is used as intended.
+  - The native **Clean Up Bags** button sits at the end of the search box, as on the native bag. Right-click still gives Baganator's own sort options.
+  - **Currencies** and other bottom buttons become flat, native-size icon buttons.
+  - The money line sits in Blizzard's **coin box**.
+- **Original**: leaves Baganator completely alone. Changing the style takes effect after `/reload`.
+
 ---
 
 ## Slash Commands
@@ -82,6 +94,7 @@ Choose a **Style**:
 
 - World of Warcraft Retail (Midnight, Interface 120105) or WoW Forever (Interface 16001). One download covers both.
 - Optional: Zygor Guides Viewer, for the XpieHUD - Zygor Guides extension
+- Optional: Baganator, for the XpieHUD - Baganator extension
 
 ## Notes
 
@@ -91,6 +104,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.5.0**: New extension **XpieHUD - Baganator**: Baganator in the style of the Combined Backpack (portrait, one gear menu for its extra buttons, native Clean Up Bags button, flat bottom buttons, coin box; Customise and Bag Slots buttons removed).
 - **3.4.5**: WoW Forever support (Interface 16001). Forever runs the retail UI, so the quest window and Zygor styling work unchanged; both addons now list both interface versions. Addon list icon from the new XpieHUD logo.
 - **3.4.4**: Tab art trimmed 4px at the bottom so the tabs sit on the toolbar's gold header line.
 - **3.4.3**: Chat tab art cropped to the tab height at native scale (its top no longer crosses the header lines); share icon now tints gold when dimmed (sync unavailable) as well as normal.

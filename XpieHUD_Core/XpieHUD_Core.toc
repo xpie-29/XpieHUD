@@ -2,7 +2,7 @@
 ## Title: XpieHUD Core
 ## Notes: Quality-of-life for the native quest, gossip and book windows. Extensions add guide addon styling.
 ## Author: Jeremy / Xpie
-## Version: 3.4.5
+## Version: 3.5.0
 ## SavedVariables: XpieHUDDB
 ## IconTexture: Interface\AddOns\XpieHUD_Core\Media\icon
 ## Category-enUS: User Interface
