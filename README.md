@@ -21,7 +21,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 
 ### Zygor Guides
 - **Strip Backgrounds & Borders**: transparent Zygor window background, borders, tab strip and toolbar, title logo hidden; step boxes keep Zygor's state colours (normal, complete, unavailable) at 50% opacity without edges. Survives Zygor skin changes.
-- **Gold Waypoint Arrow**: a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `Media/Zygor/arrow.tga`: 160 pre-rotated frames). Zygor's arrived / stairs / taxi icons are unchanged.
+- **Gold Waypoint Arrow**: a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `Media/Zygor/arrow.tga`: 160 pre-rotated frames). The "you're here" marker is the gold arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
 - **Enable Zygor Integration** switch: unticking puts back everything XpieHUD changed and leaves Zygor alone.
 
 ---
@@ -58,6 +58,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 
 ## Version History
 
+- **2.0.2**: Zygor "you're here" marker uses the gold arrowhead pointing down instead of Zygor's green arrow (it flickered in when flying over a waypoint)
 - **2.0.1**: `/xhud arrowdebug` diagnostic for the Zygor arrow
 - **2.0.0**: Slimmed down to the quest window features and the Zygor integration (everything else moved to Enhance QoL; full version archived on `archive/full-v1.2.2`). Updated for 12.1.5. Obsolete settings pruned on load.
 - **1.2.2**: Fix ADDON_ACTION_BLOCKED (SetPropagateKeyboardInput) when reloading in combat; quest keys reset to pass-through on key release

@@ -153,11 +153,25 @@ local function RegisterArrowSkin()
         cols = 8, rows = 2, width = 1024, height = 256, padding = 0,
         default = "wait",
     }
-    -- The "metal" option swaps in an -specular texture we don't ship.
     local createFrame = skin.CreateFrame
     skin.CreateFrame = function(self)
-        local f = createFrame(self)
+        local f = createFrame(self)   -- runs Zygor's Setup(), which builds the icon helpers
+        -- The "metal" option swaps in an -specular texture we don't ship.
         f.SetOption = function() end
+        -- "You're here" marker: Zygor's is a green down-arrow, which flickers in
+        -- when flying over a waypoint (in and out of its arrival radius). Use
+        -- our gold arrowhead pointing down instead: sheet frame 80 (180 deg),
+        -- row 8 / column 0, drawn at the arrow's own 50x33 size. Zygor's
+        -- bounce animation still plays on it.
+        local here = f.icons and f.icons.here
+        if here then
+            here.AssignToTexture = function(_, texture)
+                texture:SetTexture(MEDIA_DIR .. "arrow")
+                texture:SetTexCoord(0, 96 / 1024, 512 / 1024, 576 / 1024)
+                texture:SetVertexColor(1, 1, 1)
+                texture:SetSize(50, 33)
+            end
+        end
         return f
     end
 end
