@@ -267,6 +267,7 @@ local BUTTON_STYLES = {
         pushed = "common-dropdown-a-button-settings-pressed-shadowless",
         hover  = "common-dropdown-a-button-settings-hover-shadowless", hoverBlend = "BLEND",
         size = 22, point = "LEFT", x = 6,
+        y = -2,   -- the gear art sits high in its box; Blizzard nudges it 2px down too (Damage Meter header)
     },
     CloseButton = {
         normal = "RedButton-Exit",
@@ -342,7 +343,7 @@ function module:StyleTitleButton(button)
 
     button:SetSize(spec.size, spec.size)
     button:ClearAllPoints()
-    button:SetPoint(spec.point, self.panel.headerFrame, spec.point, spec.x, 0)
+    button:SetPoint(spec.point, self.panel.headerFrame, spec.point, spec.x, spec.y or 0)
     -- Zygor pins the menu button to an absolute frame level; keep both
     -- buttons above our header bar.
     local headerLevel = self.panel.headerFrame:GetFrameLevel()
@@ -380,6 +381,35 @@ end
 -- ---------------------------------------------------------------------------
 -- Module hooks (called by the core)
 -- ---------------------------------------------------------------------------
+-- ---------------------------------------------------------------------------
+-- Font (XpieHUD style)
+-- Zygor draws with its own Open Sans (ZGV.Font / ZGV.FontBold, from its
+-- localisation: Skins\OpenSans.TTF). The native UI and the Objective Tracker
+-- use STANDARD_TEXT_FONT (Friz Quadrata in English). The guide's step text
+-- reads ZGV.Font live each time it draws, so swapping it converts the guide.
+-- Some Zygor files copy the font once at load (step number, tabs, menus):
+-- the step number is set directly below; tabs are styled separately.
+-- ---------------------------------------------------------------------------
+local zygorFont, zygorFontBold   -- Zygor's own fonts, for the Original style
+
+local function ApplyFont()
+    local ZGV = _G.ZGV
+    if not ZGV then return false end
+    if not zygorFont then zygorFont, zygorFontBold = ZGV.Font, ZGV.FontBold end
+    local native = XpieStyle() and STANDARD_TEXT_FONT
+    local font, bold = native or zygorFont, native or zygorFontBold
+    if ZGV.Font == font and ZGV.FontBold == bold then return false end
+    ZGV.Font, ZGV.FontBold = font, bold
+    return true
+end
+
+local function ApplyStepNumberFont(frame)
+    local step = frame and frame.Controls and frame.Controls.StepNum and frame.Controls.StepNum.Step
+    if not (step and XpieStyle()) then return end
+    local _, size, flags = step:GetFont()
+    step:SetFont(STANDARD_TEXT_FONT, size or 12, flags or "")
+end
+
 local frameHooked = false
 local stripped = false
 
@@ -388,6 +418,7 @@ function module:Apply()
     if not ZGV then return end
     RegisterArrowSkin()
     HookStepMixin()
+    local fontChanged = ApplyFont()
 
     local frame = ZGV.Frame
     if frame and frame.ApplySkin and not frameHooked then
@@ -396,6 +427,7 @@ function module:Apply()
             if not StripOn() then return end
             StripChrome()
             ForEachStep(StyleStep)
+            ApplyStepNumberFont(frame)
         end)
     end
 
@@ -413,7 +445,13 @@ function module:Apply()
             SetLogoShown(true)
             frame:ApplySkin()
             if ZGV.UpdateFrame then ZGV:UpdateFrame(true) end
+            fontChanged = false   -- already redrawn
         end
+
+        -- Native font: step number (cached by Zygor at load), then redraw the
+        -- guide so its step text picks up the swapped ZGV.Font.
+        ApplyStepNumberFont(frame)
+        if fontChanged and ZGV.UpdateFrame then ZGV:UpdateFrame(true) end
 
         -- XpieHUD background panel, anchored to the guide window so it
         -- resizes with it (Zygor's own window background is transparent).
@@ -486,6 +524,7 @@ local function OnZygorLoaded()
     if not _G.ZGV then return end
     RegisterArrowSkin()
     HookStepMixin()
+    ApplyFont()   -- before Zygor builds its window, so it draws in the native font from the start
 end
 
 local loader = CreateFrame("Frame")

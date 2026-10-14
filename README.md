@@ -44,7 +44,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 ### Zygor Guides (XpieHUD - Zygor Guides)
 Choose a **Style**:
 - **XpieHUD** (default):
-  - Zygor's window background, borders, tab strip, toolbar and logo become transparent.
+  - Zygor's window background, borders, tab strip, toolbar and logo become transparent, and the guide is drawn in Blizzard's native UI font (like the quest tracker) instead of Zygor's own.
   - A **native background panel** sits behind the guide window and resizes with it. Default look **Quest Tracker**: the Objective Tracker's background, with its gold header bar laid over Zygor's title bar and titled "Leveling Guide" in the tracker's header font (any text, or none). Alternative look: **Tooltip**. Adjustable: look, background opacity, header bar / border, title, padding.
   - **Native title bar buttons**: Zygor's menu button becomes Blizzard's gold settings gear (as on the Damage Meter) and its close button becomes Blizzard's red close button, sized like the Objective Tracker's header buttons.
   - Step boxes keep Zygor's state colours (normal, complete, unavailable) at an adjustable opacity, without edges.
@@ -87,6 +87,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.2.3**: XpieHUD style draws Zygor's guide in Blizzard's native UI font (STANDARD_TEXT_FONT, Friz Quadrata in English) instead of Zygor's Open Sans; settings gear nudged 2px down like Blizzard's Damage Meter header.
 - **3.2.2**: Zygor title buttons now keep Zygor's own buttons with their art hidden and XpieHUD's gear / close art drawn on top (Zygor could repaint the previous restyle); header bar art overhangs both ends like the tracker's.
 - **3.2.1**: Zygor header bar sits on Zygor's own title bar; Zygor's menu and close buttons restyled as Blizzard's gold settings gear and red close button; title starts after the gear, vertically centred like the tracker's.
 - **3.2.0**: Panel looks: **Quest Tracker** (default; Objective Tracker background + gold header bar with a custom title, default "Leveling Guide") or **Tooltip**. Falls back to Tooltip with a one-time notice if the tracker art is missing.
