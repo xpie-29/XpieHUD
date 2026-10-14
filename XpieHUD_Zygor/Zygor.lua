@@ -412,6 +412,7 @@ end
 -- ---------------------------------------------------------------------------
 local TAB_ART = "Interface\\ChatFrame\\ChatFrameTab-"
 local TAB_INACTIVE_ALPHA = 0.4   -- Blizzard's CHAT_FRAME_TAB_NORMAL_NOMOUSE_ALPHA
+local TAB_GLOW_ALPHA = 0.25      -- selected glow + hover highlight: subtle, not in your face
 local tabSkins = {}              -- [tab] = { bg, sel, hl (triples), font = {Zygor's} }
 
 local function MakeTabTriple(button, kind, layer, blend)
@@ -473,8 +474,8 @@ local function StyleTab(tab)
     for _, triple in ipairs({ skin.bg, skin.sel, skin.hl }) do LayoutTabTriple(triple, button) end
     local active = tab.isActive and true or false
     SetTripleShown(skin.bg, true, active and 1 or TAB_INACTIVE_ALPHA)
-    SetTripleShown(skin.sel, active)
-    SetTripleShown(skin.hl, true)
+    SetTripleShown(skin.sel, active, TAB_GLOW_ALPHA)
+    SetTripleShown(skin.hl, true, TAB_GLOW_ALPHA)
 
     if tab.Text then
         if not skin.font then skin.font = { tab.Text:GetFont() } end
