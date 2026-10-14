@@ -65,6 +65,8 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
   - The native **Clean Up Bags** button sits at the end of the search box, as on the native bag. Right-click still gives Baganator's own sort options.
   - The **Currencies** button matches the gear (same size and square frame, with hover and pressed states) and sits bottom-left, with the coin box to its right. Other bottom buttons become flat, native-size icon buttons.
   - The money line sits in Blizzard's **coin box**.
+  - Category sections ("Equipment", "Crafting") look like the Objective Tracker's section headers: the gold bar, the tracker's header font, and its -/+ button at the right end. Click anywhere on the bar to collapse or expand; right-click still transfers the section.
+- **Baganator Profile**: XpieHUD can set each character's Baganator up with its own profile (category layout, icon size, spacing) the first time the character logs in, using Baganator's own import. It becomes the Baganator profile "XpieHUD"; switch profiles in Baganator any time. The XpieHUD settings page can re-apply it or turn this off.
 - **Original**: leaves Baganator completely alone. Changing the style takes effect after `/reload`.
 
 ---
@@ -104,6 +106,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.6.0**: Baganator: category sections ("Equipment", "Crafting") as Objective Tracker section headers (gold bar, tracker font, the tracker's -/+ button). New: set each character's Baganator up with an XpieHUD profile through Baganator's own import (profile still to be added). Currencies button lined up with the coin box.
 - **3.5.4**: Baganator: the Currencies button uses the gear's square frame art with its hover and pressed states.
 - **3.5.3**: Baganator: the Currencies button is styled like the gear (gear-sized, no button frame, icon glows on hover) at the bottom-left, with the coin box starting to its right.
 - **3.5.2**: Baganator: gear tucked against the portrait and centred on the title bar; bottom icon buttons fit the coin box, with their hover glow kept inside the button.

@@ -22,13 +22,20 @@
 -- behaviour (sort modes, transfer rules, menus) is kept.
 -- Baganator isn't secure code, so hooking it can't taint Blizzard's UI.
 
+local _, ns = ...
 local core = XpieHUD
+
+local PROFILE_NAME = "XpieHUD"
 
 local module = core:RegisterModule("baganator", {
     title = "Baganator",
     defaults = {
         -- "xpiehud": Combined Backpack look. "original": leave Baganator alone.
         style = "xpiehud",
+        -- Set each new character's Baganator up with the XpieHUD profile
+        -- (Profile.lua) once; the player can change profile in Baganator after.
+        useProfile = true,
+        profileApplied = {},   -- ["Name-Realm"] = true
     },
 })
 
@@ -52,6 +59,7 @@ local COINBOX_INSET = 8
 local CURRENCY_SIZE, CURRENCY_ICON = 24, 14
 local CURRENCY_ICON_Y = 2   -- the frame's arrow sits low; the icon covers it centred 2px up (tuned in game)
 local CURRENCY_X   = 6
+local CURRENCY_Y   = -2     -- the frame art sits high in its texture; lines up with the coin box (tuned in game)
 -- The gear's frame without the gear: the dropdown button art (its arrow is
 -- hidden under the icon), with the same normal / hover / pressed states.
 local CURRENCY_ART = {
@@ -171,7 +179,7 @@ local function PlaceCurrency(button)
     button.xpiePlacing = true
     button:ClearAllPoints()
     button:SetPoint("BOTTOMLEFT", button:GetParent(), "BOTTOMLEFT", CURRENCY_X,
-        COINBOX_INSET + (COINBOX_H - CURRENCY_SIZE) / 2)
+        COINBOX_INSET + (COINBOX_H - CURRENCY_SIZE) / 2 + CURRENCY_Y)
     button.xpiePlacing = false
 end
 
@@ -391,6 +399,76 @@ local function StyleView(view, kind)
 end
 
 -- ---------------------------------------------------------------------------
+-- Category section headers ("Equipment", "Crafting") as Objective Tracker
+-- section headers ("Campaign", "Quests"): the gold
+-- "UI-QuestTracker-Secondary-Objective-Header" bar across the item area, the
+-- tracker's header font 7px in, and the tracker's -/+ button at the right
+-- end instead of Baganator's arrow (ObjectiveTrackerModuleHeaderTemplate).
+-- The whole bar is the button, so clicking anywhere on it still collapses /
+-- expands, and right-click still transfers the section.
+-- ---------------------------------------------------------------------------
+local SECTION_BAR      = "UI-QuestTracker-Secondary-Objective-Header"
+local SECTION_COLLAPSE = "ui-questtrackerbutton-secondary-collapse"   -- shown while expanded (-)
+local SECTION_EXPAND   = "ui-questtrackerbutton-secondary-expand"     -- shown while collapsed (+)
+local SECTION_HOVER    = "ui-questtrackerbutton-yellow-highlight"
+local SECTION_TEXT_X   = 7
+local SECTION_TOGGLE   = 16
+local SECTION_BAR_PAD  = 4    -- bar reaches this far past the item area at each end
+
+local function AnchorSectionRight(button)
+    if button.xpieAnchoring then return end
+    local container = button:GetParent()
+    if not container then return end
+    button.xpieAnchoring = true
+    button:SetPoint("RIGHT", container, "RIGHT", 0, 0)
+    button.xpieAnchoring = false
+end
+
+local function StyleSectionHeader(button)
+    if button.xpieSection then return end
+    button.xpieSection = true
+
+    local info = C_Texture.GetAtlasInfo(SECTION_BAR)
+    if info then
+        local bar = button:CreateTexture(nil, "BACKGROUND")
+        bar:SetAtlas(SECTION_BAR, false)
+        bar:SetHeight(info.height or 26)
+        bar:SetPoint("LEFT", button, "LEFT", -SECTION_BAR_PAD, 0)
+        bar:SetPoint("RIGHT", button, "RIGHT", SECTION_BAR_PAD, 0)
+    end
+
+    if _G.ObjectiveTrackerHeaderFont then
+        button:SetNormalFontObject(ObjectiveTrackerHeaderFont)
+    end
+    local text = button:GetFontString()
+    if text then
+        text:ClearAllPoints()
+        text:SetPoint("LEFT", SECTION_TEXT_X, 0)
+        text:SetPoint("RIGHT", -(SECTION_TOGGLE + 4), 0)
+    end
+
+    if button.arrow then button.arrow:Hide() end
+    local toggle = button:CreateTexture(nil, "ARTWORK")
+    toggle:SetSize(SECTION_TOGGLE, SECTION_TOGGLE)
+    toggle:SetPoint("RIGHT", 1, 0)
+    toggle:SetAtlas(SECTION_COLLAPSE)
+    local hover = button:CreateTexture(nil, "HIGHLIGHT")
+    hover:SetAtlas(SECTION_HOVER)
+    hover:SetBlendMode("ADD")
+    hover:SetAllPoints(toggle)
+    if button.SetExpanded then
+        hooksecurefunc(button, "SetExpanded", function() toggle:SetAtlas(SECTION_COLLAPSE) end)
+    end
+    if button.SetCollapsed then
+        hooksecurefunc(button, "SetCollapsed", function() toggle:SetAtlas(SECTION_EXPAND) end)
+    end
+
+    -- Stretch the button (and so the bar) to the right edge of the item area.
+    hooksecurefunc(button, "SetPoint", AnchorSectionRight)
+    AnchorSectionRight(button)
+end
+
+-- ---------------------------------------------------------------------------
 -- Skin listener
 -- ---------------------------------------------------------------------------
 local function OnFrame(details)
@@ -417,6 +495,8 @@ local function OnFrame(details)
             HookSearchWidget(widget)
             CreatePendingSorts()
         end
+    elseif regionType == "CategorySectionHeader" then
+        StyleSectionHeader(region)
     elseif regionType == "ButtonFrame" then
         local kind = HasTag(tags, VIEW_TAGS)
         if kind then StyleView(region, kind) end
@@ -430,6 +510,40 @@ if Baganator and Baganator.API and Baganator.API.Skins then
     for _, details in ipairs(Baganator.API.Skins.GetAllFrames() or {}) do
         OnFrame(details)
     end
+end
+
+-- ---------------------------------------------------------------------------
+-- Default profile: Profile.lua's export string, imported with Baganator's own
+-- public import (Baganator.API.ImportString). Importing creates (or replaces)
+-- the Baganator profile "XpieHUD" and switches this character to it.
+-- Baganator profiles are chosen per character, so it's applied once per
+-- character; after that the player is free to pick another profile.
+-- ---------------------------------------------------------------------------
+local function CharacterKey()
+    return (UnitName("player") or "?") .. "-" .. (GetNormalizedRealmName() or "?")
+end
+
+function module:ApplyProfile(quiet)
+    local text = ns.BAGANATOR_PROFILE
+    if not text or text == "" then
+        if not quiet then core:Print("No Baganator profile is included in this version yet.") end
+        return false
+    end
+    if not (Baganator and Baganator.API and Baganator.API.ImportString) then return false end
+    local ok, err = pcall(Baganator.API.ImportString, text, PROFILE_NAME)
+    if not ok then
+        core:Print("Couldn't set up the Baganator profile: " .. tostring(err))
+        return false
+    end
+    self.db.profileApplied[CharacterKey()] = true
+    return true
+end
+
+function module:OnLogin()
+    if not (self.db.useProfile and ns.BAGANATOR_PROFILE) then return end
+    if self.db.profileApplied[CharacterKey()] then return end
+    -- After Baganator has finished its own login setup.
+    C_Timer.After(0, function() self:ApplyProfile(true) end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -452,4 +566,9 @@ function module:BuildSettings(page)
             }
         end,
     })
+    page:Space(6)
+    page:Header("Baganator Profile")
+    page:Checkbox({ key = "useProfile", label = "Set Up New Characters",
+        description = "The first time each character logs in, set Baganator up with the XpieHUD profile (category layout, icon size and spacing). You can switch to another profile in Baganator afterwards." })
+    page:Button("Apply XpieHUD Profile", function() module:ApplyProfile(false) end)
 end
