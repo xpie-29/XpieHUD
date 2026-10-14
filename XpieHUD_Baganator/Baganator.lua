@@ -33,7 +33,14 @@ local module = core:RegisterModule("baganator", {
 })
 
 local BAG_ICON     = "Interface\\Icons\\Inv_misc_bag_08"   -- ContainerFrameCombinedBags portrait
+-- The Combined Backpack's frame: the small portrait corner ("HeldBagLayout"),
+-- a 36px portrait at (-4, 1) and the title 35px in (ContainerFrame.lua).
+local BORDER_LAYOUT = "HeldBagLayout"
+local PORTRAIT_SIZE, PORTRAIT_X, PORTRAIT_Y = 36, -4, 1
+local TITLE_OFFSET = 35
 local GEAR_SIZE    = 24
+local GEAR_X       = 4      -- from the title area's left edge, i.e. just right of the portrait
+local SEARCH_LEFT  = 40     -- search box starts clear of the portrait ring
 local SORT_W, SORT_H = 28, 26                              -- BagItemAutoSortButton
 local SORT_GAP     = 4
 local SMALL_BUTTON = 22                                     -- flattened icon buttons
@@ -125,6 +132,14 @@ local function Flatten(button)
     end
     button:SetHighlightTexture("Interface\\Buttons\\ButtonHilight-Square", "ADD")
     button:SetSize(SMALL_BUTTON, SMALL_BUTTON)
+    -- Baganator's tooltip opens to the right, over the items; show it below
+    -- the window instead.
+    button:HookScript("OnEnter", function(self)
+        if GameTooltip:IsOwned(self) then
+            GameTooltip:ClearAllPoints()
+            GameTooltip:SetPoint("TOPLEFT", self, "BOTTOMLEFT", 0, -6)
+        end
+    end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -133,11 +148,16 @@ end
 local function AnchorSearch(widget)
     local box, side = widget.SearchBox, widget.sideSpacing
     if not (box and side) then return end
+    local view = widget:GetParent()
     local sort = widget.xpieSort
     local room = (sort and sort:IsShown()) and (SORT_W + SORT_GAP) or 0
-    -- Replaces Baganator's RIGHT anchor (which left room for three buttons);
-    -- its TOPLEFT anchor is kept.
-    box:SetPoint("RIGHT", widget:GetParent(), "RIGHT", -side - room, 0)
+    -- Replaces Baganator's RIGHT anchor (which left room for three buttons).
+    box:SetPoint("RIGHT", view, "RIGHT", -side - room, 0)
+    -- With the portrait back, start the box clear of its ring (Baganator's
+    -- TOPLEFT is sideSpacing + 11 in, 28 down).
+    if view.xpieKind then
+        box:SetPoint("TOPLEFT", view, "TOPLEFT", math.max(side + 11, SEARCH_LEFT), -28)
+    end
 end
 
 local function HookSearchWidget(widget)
@@ -147,10 +167,15 @@ local function HookSearchWidget(widget)
     AnchorSearch(widget)
 end
 
+-- Baganator announces its sort button before the window's search widget
+-- exists, so sort buttons wait here until it does.
+local pendingSorts = {}
+
 local function CreateSortButton(original)
     local view = original:GetParent()
     local widget = view and view.SearchWidget
-    if not (widget and widget.SearchBox) or widget.xpieSort then return end
+    if widget and widget.xpieSort then return true end
+    if not (widget and widget.SearchBox) then return false end
 
     local button = CreateFrame("Button", nil, view)
     button:SetSize(SORT_W, SORT_H)
@@ -185,6 +210,13 @@ local function CreateSortButton(original)
     hooksecurefunc(original, "SetShown", Sync)
     Sync()
     HookSearchWidget(widget)
+    return true
+end
+
+local function CreatePendingSorts()
+    for original in pairs(pendingSorts) do
+        if CreateSortButton(original) then pendingSorts[original] = nil end
+    end
 end
 
 -- ---------------------------------------------------------------------------
@@ -223,11 +255,13 @@ local function CreateGear(view)
     gear:SetScript("OnMouseDown", function() icon:SetAtlas("common-dropdown-a-button-settings-pressed-shadowless") end)
     gear:SetScript("OnMouseUp", function() icon:SetAtlas("common-dropdown-a-button-settings-shadowless") end)
     if view.TitleContainer then
-        gear:SetPoint("LEFT", view.TitleContainer, "LEFT", 0, 0)
+        gear:SetPoint("LEFT", view.TitleContainer, "LEFT", GEAR_X, 0)
     else
-        gear:SetPoint("TOPLEFT", view, "TOPLEFT", 58, 2)
+        gear:SetPoint("TOPLEFT", view, "TOPLEFT", TITLE_OFFSET + GEAR_X, 2)
     end
-    gear:SetFrameLevel(view:GetFrameLevel() + 10)
+    -- Above the frame's border art (the NineSlice sits high, at the title bar).
+    local border = view.NineSlice and view.NineSlice:GetFrameLevel() or view:GetFrameLevel()
+    gear:SetFrameLevel(math.max(border, view:GetFrameLevel()) + 5)
     gear:SetupMenu(BuildMenu)
     view.xpieGear = gear
 end
@@ -260,6 +294,18 @@ local function StyleView(view, kind)
 
     if ButtonFrameTemplate_ShowPortrait and view.SetPortraitToAsset then
         ButtonFrameTemplate_ShowPortrait(view)
+        -- Then the Combined Backpack's smaller portrait corner and title spot.
+        if view.SetBorder and NineSliceUtil.GetLayout(BORDER_LAYOUT) then
+            view:SetBorder(BORDER_LAYOUT)
+        end
+        if view.SetPortraitTextureSizeAndOffset then
+            view:SetPortraitTextureSizeAndOffset(PORTRAIT_SIZE, PORTRAIT_X, PORTRAIT_Y)
+        end
+        if view.SetTitleOffsets then
+            view:SetTitleOffsets(TITLE_OFFSET)
+        elseif view.TitleContainer then
+            view.TitleContainer:SetPoint("TOPLEFT", view, "TOPLEFT", TITLE_OFFSET, -1)
+        end
         UpdatePortrait(view)
         view:HookScript("OnShow", UpdatePortrait)
     end
@@ -268,6 +314,8 @@ local function StyleView(view, kind)
 
     CreateGear(view)
     if kind == "backpack" then CreateCoinBox(view) end
+    CreatePendingSorts()
+    if view.SearchWidget then AnchorSearch(view.SearchWidget) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -284,13 +332,16 @@ local function OnFrame(details)
             Stash(region)
         elseif HasTag(tags, { sort = true }) then
             Stash(region)
-            CreateSortButton(region)
+            if not CreateSortButton(region) then pendingSorts[region] = true end
         elseif HasTag(tags, FLAT_TAGS) then
             Flatten(region)
         end
     elseif regionType == "SearchBox" then
         local widget = region:GetParent()
-        if widget and widget.SearchBox == region then HookSearchWidget(widget) end
+        if widget and widget.SearchBox == region then
+            HookSearchWidget(widget)
+            CreatePendingSorts()
+        end
     elseif regionType == "ButtonFrame" then
         local kind = HasTag(tags, VIEW_TAGS)
         if kind then StyleView(region, kind) end

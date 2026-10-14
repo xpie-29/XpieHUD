@@ -71,7 +71,8 @@ function PageMixin:Note(text)
     note:SetWidth(560)
     note:SetJustifyH("LEFT")
     note:SetText(text)
-    self.y = self.y - 30
+    -- Room for however many lines the text wraps to, plus a gap.
+    self.y = self.y - math.max(30, math.ceil(note:GetStringHeight() or 0) + 14)
     return note
 end
 

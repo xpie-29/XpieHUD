@@ -104,6 +104,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.5.1**: Baganator: the Combined Backpack's smaller portrait corner, gear right of the portrait and above the border, search box clear of the portrait, Clean Up Bags button now appears, bottom button tooltips open below the window. Settings notes no longer overlap the controls under them.
 - **3.5.0**: New extension **XpieHUD - Baganator**: Baganator in the style of the Combined Backpack (portrait, one gear menu for its extra buttons, native Clean Up Bags button, flat bottom buttons, coin box; Customise and Bag Slots buttons removed).
 - **3.4.5**: WoW Forever support (Interface 16001). Forever runs the retail UI, so the quest window and Zygor styling work unchanged; both addons now list both interface versions. Addon list icon from the new XpieHUD logo.
 - **3.4.4**: Tab art trimmed 4px at the bottom so the tabs sit on the toolbar's gold header line.
