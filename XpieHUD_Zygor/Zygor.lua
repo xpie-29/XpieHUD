@@ -274,6 +274,19 @@ local BUTTON_STYLES = {
         hover  = "RedButton-Highlight", hoverBlend = "ADD",
         size = 24, point = "RIGHT", x = -2,  -- Blizzard's size (UIPanelCloseButton)
     },
+    -- Toolbar step arrows: Blizzard's flat arrow icons (common-icon-back/
+    -- forwardarrow, drawn 8x13 as Blizzard does), hover brightens the arrow.
+    -- They keep Zygor's own position and size.
+    PrevButton = {
+        normal = "common-icon-backarrow", pushed = "common-icon-backarrow",
+        hover  = "common-icon-backarrow", hoverBlend = "ADD",
+        keepPosition = true, artW = 8, artH = 13,
+    },
+    NextButton = {
+        normal = "common-icon-forwardarrow", pushed = "common-icon-forwardarrow",
+        hover  = "common-icon-forwardarrow", hoverBlend = "ADD",
+        keepPosition = true, artW = 8, artH = 13,
+    },
 }
 -- Title starts after the gear and stops before the close button.
 local TITLE_LEFT  = 4 + 27 + 5
@@ -297,10 +310,14 @@ local function GetSkin(button, spec)
     if skin then return skin end
 
     local art = button:CreateTexture(nil, "ARTWORK")
-    art:SetAllPoints()
+    local function Place(tx)   -- fill the button, or a fixed-size icon centred on it
+        tx:ClearAllPoints()
+        if spec.artW then tx:SetPoint("CENTER"); tx:SetSize(spec.artW, spec.artH) else tx:SetAllPoints() end
+    end
+    Place(art)
     art:SetAtlas(spec.normal)
     local glow = button:CreateTexture(nil, "HIGHLIGHT")   -- shown on mouse-over
-    glow:SetAllPoints()
+    Place(glow)
     glow:SetAtlas(spec.hover)
     glow:SetBlendMode(spec.hoverBlend)
 
@@ -340,6 +357,7 @@ function module:StyleTitleButton(button)
     skin.art:Show()
     skin.glow:Show()
 
+    if spec.keepPosition then return end   -- toolbar arrows stay where Zygor put them
     button:SetSize(spec.size, spec.size)
     button:ClearAllPoints()
     button:SetPoint(spec.point, self.panel.headerFrame, spec.point, spec.x, spec.y or 0)
@@ -562,11 +580,54 @@ local function ApplyFont()
     return true
 end
 
+-- Step number styled like a tracker section header ("Campaign", "Quests"):
+-- native font, Blizzard's gold, the header font's 1px drop shadow.
 local function ApplyStepNumberFont(frame)
     local step = frame and frame.Controls and frame.Controls.StepNum and frame.Controls.StepNum.Step
-    if not (step and XpieStyle()) then return end
+    if not step then return end
+    if not XpieStyle() then
+        -- Original style: Zygor never colours it, so return to its template's white.
+        if step.xhudStyled then step:SetTextColor(HIGHLIGHT_FONT_COLOR:GetRGB()); step.xhudStyled = nil end
+        return
+    end
+    step.xhudStyled = true
     local _, size, flags = step:GetFont()
     step:SetFont(STANDARD_TEXT_FONT, size or 12, flags or "")
+    step:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
+    step:SetShadowColor(0, 0, 0, 1)
+    step:SetShadowOffset(1, -1)
+end
+
+-- ---------------------------------------------------------------------------
+-- Toolbar row (prev / step number / next / icons) as a tracker section header:
+-- "UI-QuestTracker-Secondary-Objective-Header", the art behind "Campaign" and
+-- "Quests" (ObjectiveTrackerModuleHeaderTemplate: 260x26 frame, art at native
+-- size, centred). Drawn on our panel, above its body, below Zygor's content,
+-- stretched across the toolbar with the tracker's overhang at both ends.
+-- ---------------------------------------------------------------------------
+local SECTION_HEADER_ATLAS = "UI-QuestTracker-Secondary-Objective-Header"
+local sectionHeader
+
+local function ApplyToolbarHeader(frame, panel)
+    local toolbar = frame.Controls and frame.Controls.Toolbar or (frame.Border and frame.Border.Toolbar)
+    if not (toolbar and panel) then return end
+    local info = C_Texture and C_Texture.GetAtlasInfo and C_Texture.GetAtlasInfo(SECTION_HEADER_ATLAS)
+    if not sectionHeader then
+        if not info then return end   -- art missing in this client: leave the row plain
+        local holder = CreateFrame("Frame", nil, panel.frame)
+        holder:SetAllPoints(panel.frame)
+        holder:EnableMouse(false)
+        sectionHeader = holder:CreateTexture(nil, "ARTWORK")
+        sectionHeader:SetAtlas(SECTION_HEADER_ATLAS, false)
+        sectionHeader.holder = holder
+    end
+    local overhang = info and info.width and math.max(0, (info.width - 260) / 2) or 0
+    sectionHeader.holder:SetFrameLevel(panel.headerFrame:GetFrameLevel())
+    sectionHeader:ClearAllPoints()
+    sectionHeader:SetPoint("LEFT", toolbar, "LEFT", -overhang, 0)
+    sectionHeader:SetPoint("RIGHT", toolbar, "RIGHT", overhang, 0)
+    sectionHeader:SetHeight(info and info.height or 26)
+    sectionHeader.holder:SetShown(XpieStyle())
 end
 
 local frameHooked = false
@@ -627,6 +688,7 @@ function module:Apply()
         HookTabs()
         StyleAllTabs()
         ApplyTabLine(frame, self.panel)
+        ApplyToolbarHeader(frame, self.panel)
     end
 
     ApplyArrow()

@@ -47,6 +47,7 @@ Choose a **Style**:
   - Zygor's window background, borders, tab strip, toolbar and logo become transparent, and the guide is drawn in Blizzard's native UI font (like the quest tracker) instead of Zygor's own.
   - A **native background panel** sits behind the guide window and resizes with it. Default look **Quest Tracker**: the Objective Tracker's background, with its gold header bar laid over Zygor's title bar and titled "Leveling Guide" in the tracker's header font (any text, or none). Alternative look: **Tooltip**. Adjustable: look, background opacity, header bar / border, title, padding.
   - **Native title bar buttons**: Zygor's menu button becomes Blizzard's gold settings gear (as on the Damage Meter) and its close button becomes Blizzard's red close button, both at Blizzard's own sizes.
+  - **Native toolbar**: the step row (arrows, step number, icons) sits on the tracker's section-header art, like "Campaign" or "Quests", with a gold step number and Blizzard's flat arrow icons.
   - **Native guide tabs**: Zygor's guide tabs use Blizzard's chat tab art (like "General / Combat Log"): translucent tabs, a soft gold glow on the selected tab, the chat tab hover highlight, and gold text in the native font.
   - Step boxes keep Zygor's state colours (normal, complete, unavailable) at an adjustable opacity, without edges.
   - **Gold Waypoint Arrow** (can be turned off): a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`, 160 pre-rotated frames). The "you're here" marker is the same arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
@@ -88,6 +89,7 @@ Choose a **Style**:
 
 ## Version History
 
+- **3.4.0**: Zygor's toolbar row (step arrows, step number, icons) styled as an Objective Tracker section header (the art behind "Campaign" / "Quests"); step number in Blizzard's gold with the header shadow; step arrows as Blizzard's flat arrow icons.
 - **3.3.1**: Chat tab art drawn at its native 32px height (scaling had put the tab edge through the text); single gold line (tracker art) under the guide tabs.
 - **3.3.0**: Zygor guide tabs restyled as Blizzard's chat tabs (translucent, gold selected glow, hover highlight, native font, gold text).
 - **3.2.4**: Zygor title buttons at Blizzard's own sizes: gold gear 27px (Damage Meter), red close 24px (standard close button).
