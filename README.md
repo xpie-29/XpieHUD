@@ -1,4 +1,5 @@
 # XpieHUD
+n<p align="center"><img src="Media/XpieHUD-logo.png" alt="XpieHUD" width="200"></p>
 
 Quality-of-life for Blizzard's **native** quest windows, plus optional extensions that restyle popular guide addons to match. Built for Retail (Midnight, 12.1.5) and WoW Forever (1.60).
 
@@ -89,7 +90,7 @@ Choose a **Style**:
 
 ## Version History
 
-- **3.4.5**: WoW Forever support (Interface 16001). Forever runs the retail UI, so the quest window and Zygor styling work unchanged; both addons now list both interface versions.
+- **3.4.5**: WoW Forever support (Interface 16001). Forever runs the retail UI, so the quest window and Zygor styling work unchanged; both addons now list both interface versions. Addon list icon from the new XpieHUD logo.
 - **3.4.4**: Tab art trimmed 4px at the bottom so the tabs sit on the toolbar's gold header line.
 - **3.4.3**: Chat tab art cropped to the tab height at native scale (its top no longer crosses the header lines); share icon now tints gold when dimmed (sync unavailable) as well as normal.
 - **3.4.2**: Zygor add-tab button is the Objective Tracker's native + button; share, report-step, more (…) and more-tabs (») glyphs tinted Blizzard gold (share keeps its green guide-sync colour).

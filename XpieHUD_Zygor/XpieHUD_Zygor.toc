@@ -5,6 +5,7 @@
 ## Version: 3.4.5
 ## Dependencies: XpieHUD_Core
 ## Group: XpieHUD_Core
+## IconTexture: InterfaceAddOnsXpieHUD_CoreMediaicon
 ## Category-enUS: User Interface
 
 Zygor.lua

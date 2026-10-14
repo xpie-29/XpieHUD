@@ -4,6 +4,7 @@
 ## Author: Jeremy / Xpie
 ## Version: 3.4.5
 ## SavedVariables: XpieHUDDB
+## IconTexture: InterfaceAddOnsXpieHUD_CoreMediaicon
 ## Category-enUS: User Interface
 
 Core.lua
