@@ -446,15 +446,20 @@ local SECTION_BAR_CAP  = 0.15   -- share of the art's width kept unstretched at 
 -- Fonts as the tracker sizes them: section headers like quest names, category
 -- labels like objective lines. Both copy ObjectiveTrackerLineFont: labels at
 -- its size (the tracker's Edit Mode text size), section titles at a fixed 13;
--- titles in the tracker's quest-name "Header" gold, labels in its objective
--- "Normal" off-white (OBJECTIVE_TRACKER_COLOR).
+-- titles in the same bright gold as the Zygor module's headers and the
+-- tracker's quest names (NORMAL_FONT_COLOR; OBJECTIVE_TRACKER_COLOR.Header is
+-- a duller gold), labels in the tracker's objective "Normal" off-white.
 local trackerFonts = {}
 local function TrackerFont(kind, size)
     if trackerFonts[kind] then return trackerFonts[kind] end
     local base = _G.ObjectiveTrackerLineFont or GameFontNormal
     local colors = _G.OBJECTIVE_TRACKER_COLOR
-    local color = colors and colors[kind]
-        or (kind == "Header" and NORMAL_FONT_COLOR or { r = 0.8, g = 0.8, b = 0.8 })
+    local color
+    if kind == "Header" then
+        color = NORMAL_FONT_COLOR
+    else
+        color = colors and colors[kind] or { r = 0.8, g = 0.8, b = 0.8 }
+    end
     local font = CreateFont("XpieHUDBaganator" .. kind .. "Font")
     font:CopyFontObject(base)
     if size then
