@@ -369,6 +369,23 @@ local function CreateCoinBox(view)
     view.xpieCoinBox = box
 end
 
+-- Background like the native Combined Backpack: a flat panel of the
+-- PANEL_BACKGROUND_COLOR tint (PortraitFrameFlatTemplate's Bg), instead of
+-- Baganator's textured one. It follows the original background's anchors
+-- (which stay in place, invisible) and sits at frame level 0, like
+-- Blizzard's. Used for every Baganator window.
+local function FlatBackground(view)
+    if not view.Bg or view.xpieFlatBg then return end
+    local ok, flat = pcall(CreateFrame, "Frame", nil, view, "FlatPanelBackgroundTemplate")
+    if ok and flat then
+        flat:SetAllPoints(view.Bg)
+        flat:SetFrameLevel(0)
+        flat:EnableMouse(false)
+        view.xpieFlatBg = flat
+        Stash(view.Bg)
+    end
+end
+
 local function StyleView(view, kind)
     if view.xpieKind then return end
     view.xpieKind = kind
@@ -406,21 +423,7 @@ local function StyleView(view, kind)
         hooksecurefunc(view.Bg, "SetPoint", FixBgLeft)
         FixBgLeft(view.Bg)
     end
-    -- Background like the native Combined Backpack: a flat panel of the
-    -- PANEL_BACKGROUND_COLOR tint (PortraitFrameFlatTemplate's Bg), instead of
-    -- Baganator's textured one. It follows the original background's anchors
-    -- (which stay in place, invisible) and sits at frame level 0, like
-    -- Blizzard's.
-    if view.Bg and not view.xpieFlatBg then
-        local ok, flat = pcall(CreateFrame, "Frame", nil, view, "FlatPanelBackgroundTemplate")
-        if ok and flat then
-            flat:SetAllPoints(view.Bg)
-            flat:SetFrameLevel(0)
-            flat:EnableMouse(false)
-            view.xpieFlatBg = flat
-            Stash(view.Bg)
-        end
-    end
+    FlatBackground(view)
     -- The Combined Backpack is a flat portrait frame: no tile streaks.
     if view.TopTileStreaks then Stash(view.TopTileStreaks) end
 
@@ -608,6 +611,16 @@ local function AnchorSectionRight(button)
     C_Timer.After(0, function() PlaceSectionBarLeft(button) end)
 end
 
+local hiddenFont
+local function HiddenFont()
+    if not hiddenFont then
+        hiddenFont = CreateFont("XpieHUDBaganatorHiddenFont")
+        hiddenFont:CopyFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
+        hiddenFont:SetTextColor(0, 0, 0, 0)
+    end
+    return hiddenFont
+end
+
 local function StyleSectionHeader(button)
     if button.xpieSection then return end
     button.xpieSection = true
@@ -621,16 +634,25 @@ local function StyleSectionHeader(button)
     -- button's frame level against the bar's was not reliable. The button's
     -- own text is hidden and mirrored.
     local owner = button.xpieHolder or button
-    local text = button:GetFontString()
-    if text then
+    do
         local title = owner:CreateFontString(nil, "OVERLAY")
         title:SetFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
         title:SetJustifyH("LEFT")
         title:SetWordWrap(false)
         title:SetPoint("LEFT", button, "LEFT", SECTION_TEXT_X, 0)
         title:SetPoint("RIGHT", button, "RIGHT", -(SECTION_TOGGLE + 4), 0)
-        Stash(text)
-        local function Sync() title:SetText(text:GetText() or "") end
+        -- The button's own text is hidden: its fontstring can be created only
+        -- when Baganator first sets the text, so it's looked up again on every
+        -- change, and the button's font objects are made invisible as well.
+        local hidden = HiddenFont()
+        button:SetNormalFontObject(hidden)
+        button:SetHighlightFontObject(hidden)
+        button:SetDisabledFontObject(hidden)
+        local function Sync()
+            local fs = button:GetFontString()
+            if fs then Stash(fs) end
+            title:SetText(button:GetText() or "")
+        end
         hooksecurefunc(button, "SetText", Sync)
         button:HookScript("OnShow", Sync)
         Sync()
@@ -692,7 +714,11 @@ local function OnFrame(details)
         StyleCategoryLabel(region)
     elseif regionType == "ButtonFrame" then
         local kind = HasTag(tags, VIEW_TAGS)
-        if kind then StyleView(region, kind) end
+        if kind then
+            StyleView(region, kind)
+        else
+            FlatBackground(region)   -- All Characters, Currencies, ...
+        end
     end
 end
 
