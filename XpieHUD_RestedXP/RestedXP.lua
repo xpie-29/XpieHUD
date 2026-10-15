@@ -101,12 +101,18 @@ local function BuildTheme()
     return theme
 end
 
--- Boxes follow the panel's opacity setting.
-local function UpdateThemeOpacity()
+-- RXP's other boxes follow the panel setting: black for the Quest Tracker
+-- look (its background is a black fade), the tooltip colour for the Tooltip
+-- look, at the panel's opacity.
+local function UpdateThemeBackground()
     if not theme then return false end
-    local alpha = ((module.db.panel and module.db.panel.opacity) or 80) / 100
-    if theme.background[4] == alpha then return false end
-    theme.background[4] = alpha
+    local style = module.db.panel or {}
+    local r, g, b = 0, 0, 0
+    if style.look == "tooltip" then r, g, b = TooltipColor() end
+    local a = (style.opacity or 80) / 100
+    local bg = theme.background
+    if bg[1] == r and bg[2] == g and bg[3] == b and bg[4] == a then return false end
+    bg[1], bg[2], bg[3], bg[4] = r, g, b, a
     return true
 end
 
@@ -130,7 +136,7 @@ local function ApplyTheme()
 
     local db = module.db
     local want = XpieStyle()
-    local changed = UpdateThemeOpacity() and profile.activeTheme == THEME_NAME
+    local changed = UpdateThemeBackground() and profile.activeTheme == THEME_NAME
     if want and profile.activeTheme ~= THEME_NAME then
         db.prevTheme = profile.activeTheme
         profile.activeTheme = THEME_NAME
@@ -249,6 +255,57 @@ local function ApplyTitle()
 end
 
 -- ---------------------------------------------------------------------------
+-- Step list top: RXP lets its title box overlap the list by 9px (its banner
+-- covered the rows scrolling under it). With the title box see-through, the
+-- list starts under the title instead.
+-- ---------------------------------------------------------------------------
+local LIST_GAP = 2
+
+local function ApplyListTop(on)
+    local f = _G.RXPFrame
+    local scroll, name = f.ScrollFrame, f.GuideName
+    if not (scroll and name and scroll.GetPointByName) then return end
+    if not scroll.xhudTop then
+        local point, rel, relPoint, x, y = scroll:GetPointByName("TOPLEFT")
+        if not point then return end
+        scroll.xhudTop = { point, rel, relPoint, x, y }
+    end
+    local saved = scroll.xhudTop
+    if on then
+        scroll:SetPoint("TOPLEFT", name, "BOTTOMLEFT", saved[4] or 0, -LIST_GAP)
+    else
+        scroll:SetPoint(unpack(saved))
+    end
+end
+
+-- Footer version line ("RestedXP Guides v4.11.23"): kept, in Blizzard's
+-- quiet grey like other secondary text. RXP colours it on setup and theme
+-- changes; post-hooked.
+local function ApplyFooterText()
+    local text = _G.RXPFrame.Footer and _G.RXPFrame.Footer.text
+    if not text then return end
+    local function restyle()
+        if styling then return end
+        styling = true
+        if XpieStyle() then
+            text:SetTextColor(GRAY_FONT_COLOR:GetRGB())
+            text.xhudStyled = true
+        elseif text.xhudStyled then
+            text.xhudStyled = nil
+            local rxp = GetRXP()
+            local color = rxp and rxp.activeTheme and rxp.activeTheme.textColor
+            if color then text:SetTextColor(unpack(color)) end
+        end
+        styling = false
+    end
+    if not text.xhudHooked then
+        text.xhudHooked = true
+        hooksecurefunc(text, "SetTextColor", restyle)
+    end
+    restyle()
+end
+
+-- ---------------------------------------------------------------------------
 -- Settings gear: RXP's cog stays the real button (its menu, its tooltip).
 -- Its art is hidden by alpha and our gear art drawn on it; it moves from the
 -- footer to the left end of the header bar, like the Zygor module's menu gear.
@@ -313,17 +370,48 @@ local SCROLL_ART = {
     ScrollUpButton   = { "minimal-scrollbar-arrow-top", "minimal-scrollbar-arrow-top-over", "minimal-scrollbar-arrow-top-down" },
     ScrollDownButton = { "minimal-scrollbar-arrow-bottom", "minimal-scrollbar-arrow-bottom-over", "minimal-scrollbar-arrow-bottom-down" },
 }
-local SCROLL_THUMB = "minimal-scrollbar-small-thumb-middle"
+-- The thumb is Blizzard's three-piece small thumb (top cap, stretched
+-- middle, bottom cap) drawn over RXP's thumb, which stays in place (it's
+-- what the scroll bar moves) but is made invisible.
+local SCROLL_THUMB = {
+    top    = "minimal-scrollbar-small-thumb-top",
+    middle = "minimal-scrollbar-small-thumb-middle",
+    bottom = "minimal-scrollbar-small-thumb-bottom",
+}
 local SCROLL_ARROW_W, SCROLL_ARROW_H = 17, 11   -- the arrow atlases' size
 
 local function ScrollBar()
     return _G.RXPFrame.ScrollFrame and _G.RXPFrame.ScrollFrame.ScrollBar
 end
 
+local function ThumbPieces(bar, thumb)
+    if bar.xhudThumb then return bar.xhudThumb end
+    local pieces = {}
+    for key, atlas in pairs(SCROLL_THUMB) do
+        local tx = bar:CreateTexture(nil, "OVERLAY", nil, 1)
+        tx:SetAtlas(atlas, key ~= "middle")   -- caps at their own size
+        pieces[key] = tx
+    end
+    pieces.top:SetPoint("TOP", thumb, "TOP")
+    pieces.bottom:SetPoint("BOTTOM", thumb, "BOTTOM")
+    pieces.middle:SetPoint("TOPLEFT", pieces.top, "BOTTOMLEFT")
+    pieces.middle:SetPoint("BOTTOMRIGHT", pieces.bottom, "TOPRIGHT")
+    -- Shown while styled and while the scroll bar shows its thumb.
+    function pieces.Sync()
+        local shown = bar.xhudStyled and thumb:IsShown()
+        for _, key in ipairs({ "top", "middle", "bottom" }) do pieces[key]:SetShown(shown and true or false) end
+    end
+    hooksecurefunc(thumb, "Show", pieces.Sync)
+    hooksecurefunc(thumb, "Hide", pieces.Sync)
+    hooksecurefunc(thumb, "SetShown", pieces.Sync)
+    bar.xhudThumb = pieces
+    return pieces
+end
+
 local function StyleScrollBar()
     if not XpieStyle() then return end   -- Original: RXP's UpdateScrollBar has just painted its own
     local bar = ScrollBar()
-    if not (bar and C_Texture.GetAtlasInfo(SCROLL_THUMB)) then return end
+    if not (bar and C_Texture.GetAtlasInfo(SCROLL_THUMB.middle)) then return end
     for key, art in pairs(SCROLL_ART) do
         local button = bar[key]
         if button then
@@ -346,9 +434,13 @@ local function StyleScrollBar()
             if button.Highlight then button.Highlight:SetBlendMode("BLEND") end
         end
     end
-    local thumb = bar:GetThumbTexture()
-    if thumb then thumb:SetAtlas(SCROLL_THUMB, false) end
     bar.xhudStyled = true
+    local thumb = bar:GetThumbTexture()
+    local pieces = thumb and ThumbPieces(bar, thumb)
+    if pieces then
+        thumb:SetAlpha(0)
+        pieces.Sync()
+    end
 end
 
 -- Original style: RXP's layout back, then RXP repaints its own art.
@@ -371,7 +463,11 @@ local function RestoreScrollBar()
         end
     end
     local thumb = bar:GetThumbTexture()
-    if thumb then thumb:SetTexCoord(0, 1, 0, 1) end
+    if thumb then
+        thumb:SetTexCoord(0, 1, 0, 1)
+        thumb:SetAlpha(1)
+    end
+    if bar.xhudThumb then bar.xhudThumb.Sync() end
     if _G.RXPFrame.UpdateScrollBar then _G.RXPFrame.UpdateScrollBar() end
 end
 
@@ -401,14 +497,49 @@ local function StyleCheckbox(button)
     end
 end
 
+-- Each active step box gets the guide window's panel body (no header bar,
+-- no title) behind it instead of RXP's flat colour, so the steps read as
+-- part of the same HUD. RXP's own box and its title tab go transparent.
+local stepPanels = {}
+
+local function StepPanelStyle()
+    local style = CopyTable(module.db.panel)
+    style.header, style.title = false, ""
+    return style
+end
+
+local function StyleStepBox(stepframe, on, style)
+    HookChrome(stepframe)
+    HookChrome(stepframe.number)
+    if on then
+        ClearBackdrop(stepframe)
+        ClearBackdrop(stepframe.number)
+    end
+    local panel = stepPanels[stepframe]
+    if on and not panel then
+        panel = core:CreatePanel()
+        panel:Attach(stepframe)
+        stepPanels[stepframe] = panel
+    end
+    if panel then
+        panel:SetStyle(style)
+        panel:SetActive(on)
+    end
+end
+
 local function StyleActiveSteps()
     local current = _G.RXPFrame.CurrentStepFrame
     local pool = current and current.framePool
-    if not pool or not C_Texture.GetAtlasInfo("checkbox-minimal") then return end
+    if not pool then return end
     local on = XpieStyle()
+    local checkboxes = C_Texture.GetAtlasInfo("checkbox-minimal") ~= nil
+    local style = StepPanelStyle()
     for _, stepframe in pairs(pool) do
-        for _, element in pairs(stepframe.elements or {}) do
-            if element.button then StyleCheckbox(element.button) end
+        StyleStepBox(stepframe, on, style)
+        if checkboxes then
+            for _, element in pairs(stepframe.elements or {}) do
+                if element.button then StyleCheckbox(element.button) end
+            end
         end
         -- The step's title tab ("Step 3"): native gold. RXP colours it only
         -- when it creates it, so the Original style puts its colour back.
@@ -462,6 +593,8 @@ function module:Apply()
 
     ApplyChrome(on)
     ApplyTitle()
+    ApplyFooterText()
+    ApplyListTop(on)
     ApplyGear(self.panel)
     if on then StyleScrollBar() else RestoreScrollBar() end
     if not rethemed then StyleActiveSteps() end
