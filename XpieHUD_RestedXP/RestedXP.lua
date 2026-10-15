@@ -48,6 +48,9 @@ local module = core:RegisterModule("restedxp", {
         -- "xpiehud": XpieHUD theme + native panel. "original": leave RXP alone.
         style = "xpiehud",
         panel = panelDefaults,   -- deep-copied into the saved settings
+        -- Current step boxes (below the window): their own background opacity,
+        -- in the panel's look, so they stand out from the step list above.
+        stepOpacity = 10,
         -- prevTheme: the RXP theme to put back for the Original style
     },
 })
@@ -104,15 +107,15 @@ local function BuildTheme()
     return theme
 end
 
--- RXP's other boxes follow the panel setting: black for the Quest Tracker
--- look (its background is a black fade), the tooltip colour for the Tooltip
--- look, at the panel's opacity.
+-- RXP's other boxes (item and target buttons) look like the current step
+-- boxes: black for the Quest Tracker look (its background is a black fade),
+-- the tooltip colour for the Tooltip look, at the current step opacity.
 local function UpdateThemeBackground()
     if not theme then return false end
     local style = module.db.panel or {}
     local r, g, b = 0, 0, 0
     if style.look == "tooltip" then r, g, b = TooltipColor() end
-    local a = (style.opacity or 80) / 100
+    local a = (module.db.stepOpacity or 10) / 100
     local bg = theme.background
     if bg[1] == r and bg[2] == g and bg[3] == b and bg[4] == a then return false end
     bg[1], bg[2], bg[3], bg[4] = r, g, b, a
@@ -191,7 +194,9 @@ end
 local function BrandingTextures()
     local f = _G.RXPFrame
     local name, footer = f.GuideName, f.Footer
-    return { name and name.bg, name and name.icon, name and name.classIcon, footer and footer.bg }
+    -- footer.icon is the resize grip: invisible, but still drags to resize.
+    return { name and name.bg, name and name.icon, name and name.classIcon,
+             footer and footer.bg, footer and footer.icon }
 end
 
 local function ApplyChrome(on)
@@ -207,7 +212,8 @@ end
 -- ---------------------------------------------------------------------------
 -- Guide name: on its own line just under the header bar (the bar carries the
 -- panel's title, after the gear), like the guide tab under Zygor's title.
--- Native gold font (GameFontNormal), left-aligned with the step text, one
+-- Native gold font, the small size (GameFontNormalSmall) so long guide names
+-- fit, left-aligned with the step text, one
 -- line: RXP's two-line name ("Guide\n(1-90) Default") is joined with a
 -- space and truncated if the window is narrow. RXP sets its own font, colour
 -- and text on setup, theme changes and guide loads; those calls are
@@ -218,7 +224,7 @@ local TITLE_LEFT  = GEAR_X + GEAR_SIZE + 5    -- panel title on the header bar
 local TITLE_RIGHT = 8
 local NAME_X      = 7     -- guide name inset: Blizzard's tracker title inset
 local NAME_GAP    = 2     -- header bar to guide name
-local NAME_LINE   = 14    -- the name line's height (GameFontNormal)
+local NAME_LINE   = 12    -- the name line's height (GameFontNormalSmall)
 local LIST_GAP    = 4     -- guide name to step list
 local RXP_TITLE_LEFT, RXP_TITLE_SIZE = 29, 11   -- RXP's own (GuideWindow.lua)
 
@@ -233,7 +239,7 @@ local function StyleTitle(text)
     styling = true
     local name = _G.RXPFrame.GuideName
     if XpieStyle() then
-        text:SetFontObject(GameFontNormal)
+        text:SetFontObject(GameFontNormalSmall)
         text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
         text:SetShadowColor(0, 0, 0, 1)
         text:SetShadowOffset(1, -1)
@@ -409,7 +415,6 @@ local SCROLL_THUMB = {
     middle = "minimal-scrollbar-small-thumb-middle",
     bottom = "minimal-scrollbar-small-thumb-bottom",
 }
-local SCROLL_ARROW_W, SCROLL_ARROW_H = 17, 11   -- the arrow atlases' size
 
 local function ScrollBar()
     return _G.RXPFrame.ScrollFrame and _G.RXPFrame.ScrollFrame.ScrollBar
@@ -455,10 +460,12 @@ local function StyleScrollBar()
                         for i = 1, tx:GetNumPoints() do tx.xhudPoints[i] = { tx:GetPoint(i) } end
                         tx.xhudBlend = tx:GetBlendMode()
                     end
-                    tx:SetAtlas(atlas, false)
+                    -- At the atlas's own size: these are the bar's rounded end
+                    -- caps with the arrow in them, and squeezing them into
+                    -- RXP's button clipped the caps.
                     tx:ClearAllPoints()
                     tx:SetPoint("CENTER")
-                    tx:SetSize(SCROLL_ARROW_W, SCROLL_ARROW_H)
+                    tx:SetAtlas(atlas, true)
                 end
             end
             if button.Disabled then button.Disabled:SetDesaturated(true) end
@@ -530,12 +537,13 @@ end
 
 -- Each active step box gets the guide window's panel body (no header bar,
 -- no title) behind it instead of RXP's flat colour, so the steps read as
--- part of the same HUD. RXP's own box and its title tab go transparent.
+-- part of the same HUD, at their own opacity (Current Step Background). RXP's own box and its title tab go transparent.
 local stepPanels = {}
 
 local function StepPanelStyle()
     local style = CopyTable(module.db.panel)
     style.header, style.title = false, ""
+    style.opacity = module.db.stepOpacity or 10
     return style
 end
 
@@ -669,4 +677,7 @@ function module:BuildSettings(page)
     })
     page:Space(6)
     page:PanelStyle(function() return module.db.panel end, panelDefaults)
+    page:Space(6)
+    page:Header("Current Step")
+    page:Slider({ key = "stepOpacity", label = "Current Step Background", description = "Background behind the current step boxes below the guide window (and RestedXP's item and target buttons), in the panel's look. Set it apart from the step list above.", min = 0, max = 100, step = 5, format = "%d%%" })
 end
