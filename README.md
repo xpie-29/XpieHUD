@@ -17,6 +17,7 @@ XpieHUD is one **core** addon plus optional **extensions**. Each extension is a 
 | **XpieHUD Core** (`XpieHUD_Core/`) | Required. The quest window features, the settings panel, and the shared systems extensions build on. Useful on its own. |
 | **XpieHUD - Zygor Guides** (`XpieHUD_Zygor/`) | Optional extension, requires XpieHUD Core and Zygor Guides Viewer. Gives Zygor the XpieHUD style. |
 | **XpieHUD - Baganator** (`XpieHUD_Baganator/`) | Optional extension, requires XpieHUD Core and Baganator. Gives Baganator's bag, bank and guild bank windows the look of Blizzard's Combined Backpack. |
+| **XpieHUD - RestedXP Guides** (`XpieHUD_RestedXP/`) | Optional extension, requires XpieHUD Core and RestedXP Guides. Gives RestedXP's guide window the XpieHUD style. |
 
 ### What XpieHUD Core provides
 
@@ -55,6 +56,15 @@ Choose a **Style**:
   - Step boxes keep Zygor's state colours (normal, complete, unavailable) at an adjustable opacity, without edges.
   - **Gold Waypoint Arrow** (can be turned off): a gold arrowhead in Blizzard's HUD style, registered as a native Zygor arrow skin ("XpieHUD Gold", `XpieHUD_Zygor/Media/arrow.tga`, 160 pre-rotated frames). The "you're here" marker is the same arrowhead pointing down; Zygor's stairs / taxi / waiting icons are unchanged.
 - **Original**: leaves Zygor's look completely alone. Disabling the extension in the AddOns list removes it entirely.
+
+### RestedXP Guides (XpieHUD - RestedXP Guides)
+Choose a **Style**:
+- **XpieHUD** (default), for RestedXP's guide window:
+  - An **"XpieHUD" RestedXP theme** is registered and selected (it also appears in RestedXP's own theme list): Blizzard's native UI font, no RestedXP borders, transparent step rows with a faint gold hover, and Blizzard's dark tooltip colour behind RestedXP's other boxes (active steps, item and target buttons).
+  - A **native background panel** sits behind the guide window, with its gold header bar laid over the guide title, shown in Blizzard's gold font after the gear. Same panel options as the Zygor extension.
+  - RestedXP's cog becomes Blizzard's **gold settings gear** at the left of the header bar (same menu). The RestedXP logo, class icon and banners are hidden.
+  - Native **minimal scroll bar** and **settings checkboxes** on the active steps; step titles ("Step 3") in Blizzard's gold.
+- **Original**: puts your previous RestedXP theme back and leaves RestedXP alone. RestedXP's beta "V2" window isn't styled yet.
 
 ### Baganator (XpieHUD - Baganator)
 Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > Theme):
@@ -97,6 +107,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - World of Warcraft Retail (Midnight, Interface 120105) or WoW Forever (Interface 16001). One download covers both.
 - Optional: Zygor Guides Viewer, for the XpieHUD - Zygor Guides extension
 - Optional: Baganator, for the XpieHUD - Baganator extension
+- Optional: RestedXP Guides, for the XpieHUD - RestedXP Guides extension
 
 ## Notes
 
@@ -105,6 +116,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.8.0**: New extension XpieHUD - RestedXP Guides: XpieHUD theme for RestedXP, native panel and header bar behind the guide window, gold gear, native scroll bar and checkboxes.
 - **3.7.5**: Baganator: doubled section titles fixed at the cause (the title/bar holder started visible for headers built in hidden layouts at login); dropped the hidden-font workaround from 3.7.4.
 - **3.7.4**: Baganator: native flat background on every Baganator window (All Characters, Currencies); section title no longer doubles after a fresh login.
 - **3.7.3**: Baganator: removed the stray-text hiding and /xhudbag debug command (the doubled title was a stale load, not the code).

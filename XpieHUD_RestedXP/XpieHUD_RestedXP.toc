@@ -1,0 +1,12 @@
+## Interface: 120105, 16001
+## Title: XpieHUD - RestedXP Guides
+## Notes: XpieHUD extension: RestedXP Guides in the XpieHUD style (native font and controls, native background panel) or its original look.
+## Author: Jeremy / Xpie
+## Version: 3.8.0
+## Dependencies: XpieHUD_Core
+## OptionalDeps: RXPGuides
+## Group: XpieHUD_Core
+## IconTexture: Interface\AddOns\XpieHUD_Core\Media\icon
+## Category-enUS: User Interface
+
+RestedXP.lua
