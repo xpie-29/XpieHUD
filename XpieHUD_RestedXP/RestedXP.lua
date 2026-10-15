@@ -13,6 +13,7 @@
 --     header bar (still RXP's own button: same menu)
 --   * RXP logo, class icon and banners hidden
 --   * native minimal scroll bar and settings checkboxes
+--   * the Zygor module's gold waypoint arrow (Media/arrow.tga)
 -- Style "original" puts the player's previous RXP theme and RXP's look back.
 --
 -- RestedXP internals used (checked against RestedXP Guides v4.11.23, 12.1.5):
@@ -675,6 +676,69 @@ local function StyleActiveSteps()
 end
 
 -- ---------------------------------------------------------------------------
+-- Waypoint arrow: the Zygor module's gold arrowhead. RXP draws its arrow as
+-- one texture turned with SetRotation (map.lua: RXPG_ARROW, 32px x RXP's
+-- arrow scale), so instead of Zygor's sheet of pre-turned frames it gets
+-- Media/arrow.tga: sheet frame 0 (pointing up) on a 128px square, the
+-- sheet cell's centre as the image centre, so it turns about the same point
+-- as in Zygor. Drawn at Zygor's size: the 96px cell shows 50px wide there,
+-- so the 128px square shows 128 x 50/96 = 66.7px per 32px of RXP's frame
+-- (RXP's own arrow scale setting still applies).
+-- ---------------------------------------------------------------------------
+local ARROW_TEXTURE = MEDIA_DIR .. "arrow"
+local ARROW_SIZE    = 128 * 50 / 96 / 32   -- texture size per unit of RXP's frame size
+
+local function ArrowFrame()
+    local rxp = GetRXP()
+    return (rxp and rxp.arrowFrame) or _G.RXPG_ARROW
+end
+
+local function PlaceArrowTexture(af)
+    local tx = af and af.texture
+    if not tx then return end
+    tx:ClearAllPoints()
+    if XpieStyle() then
+        tx:SetPoint("CENTER")
+        local w = af:GetWidth()
+        tx:SetSize(w * ARROW_SIZE, w * ARROW_SIZE)
+    else
+        tx:SetAllPoints()   -- RXP's own (map.lua)
+    end
+end
+
+local function StyleArrow()
+    local af = ArrowFrame()
+    if not (af and af.texture) then return end
+    if XpieStyle() then
+        af.texture:SetTexture(ARROW_TEXTURE)
+        af.texture:SetVertexColor(1, 1, 1)
+        af.xhudArrow = true
+    end
+    PlaceArrowTexture(af)
+end
+
+local arrowHooked = false
+local function ApplyArrow()
+    local af = ArrowFrame()
+    if not (af and af.texture) then return end
+    if not arrowHooked then
+        arrowHooked = true
+        -- RXP picks its arrow texture here (on theme changes and setup).
+        if af.UpdateVisuals then hooksecurefunc(af, "UpdateVisuals", StyleArrow) end
+        -- RXP sizes the frame from its Arrow Scale setting.
+        hooksecurefunc(af, "SetSize", PlaceArrowTexture)
+        af:HookScript("OnSizeChanged", PlaceArrowTexture)
+    end
+    if XpieStyle() then
+        StyleArrow()
+    elseif af.xhudArrow then
+        af.xhudArrow = nil
+        PlaceArrowTexture(af)
+        if af.UpdateVisuals then af:UpdateVisuals() end   -- RXP's texture back
+    end
+end
+
+-- ---------------------------------------------------------------------------
 -- Module hooks (called by the core)
 -- ---------------------------------------------------------------------------
 local rxpHooked = false
@@ -716,6 +780,7 @@ function module:Apply()
     ApplyListTop(on)
     ApplyGear(self.panel)
     if on then StyleScrollBar() else RestoreScrollBar() end
+    ApplyArrow()
     if not rethemed then StyleActiveSteps() end
     -- Re-anchor the step area so its spacing follows the style.
     if frame.SetStepFrameAnchor then frame.SetStepFrameAnchor() end
