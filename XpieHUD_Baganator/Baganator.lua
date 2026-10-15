@@ -430,7 +430,47 @@ local SECTION_EXPAND   = "ui-questtrackerbutton-secondary-expand"     -- shown w
 local SECTION_HOVER    = "ui-questtrackerbutton-yellow-highlight"
 local SECTION_TEXT_X   = 7
 local SECTION_TOGGLE   = 16
-local SECTION_BAR_PAD  = 4    -- bar reaches this far past the item area at each end
+-- Placed like the tracker's: the art starts 10px before the text and ends
+-- just past the -/+ button (measured on the live tracker).
+local SECTION_BAR_LEFT  = -3
+local SECTION_BAR_RIGHT = 5
+-- The art fades in and out at its ends; stretched as one piece the fades
+-- stretch too. Drawn as three slices instead: both ends at native size, only
+-- the even middle stretched.
+local SECTION_BAR_CAP   = 0.15   -- share of the art's width kept unstretched at each end
+
+local function DrawSectionBar(button, info)
+    local height = info.height or 26
+    local file = info.file or info.filename
+    local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+    if not (file and l and r and t and b and info.width) then
+        -- Atlas details unavailable: one stretched piece.
+        local bar = button:CreateTexture(nil, "BACKGROUND")
+        bar:SetAtlas(SECTION_BAR, false)
+        bar:SetHeight(height)
+        bar:SetPoint("LEFT", button, "LEFT", SECTION_BAR_LEFT, 0)
+        bar:SetPoint("RIGHT", button, "RIGHT", SECTION_BAR_RIGHT, 0)
+        return
+    end
+    local capWidth = math.floor(info.width * SECTION_BAR_CAP + 0.5)
+    local capCoord = (r - l) * SECTION_BAR_CAP
+    local function Slice(left, right)
+        local slice = button:CreateTexture(nil, "BACKGROUND")
+        slice:SetTexture(file)
+        slice:SetTexCoord(left, right, t, b)
+        slice:SetHeight(height)
+        return slice
+    end
+    local leftCap = Slice(l, l + capCoord)
+    leftCap:SetWidth(capWidth)
+    leftCap:SetPoint("LEFT", button, "LEFT", SECTION_BAR_LEFT, 0)
+    local rightCap = Slice(r - capCoord, r)
+    rightCap:SetWidth(capWidth)
+    rightCap:SetPoint("RIGHT", button, "RIGHT", SECTION_BAR_RIGHT, 0)
+    local middle = Slice(l + capCoord, r - capCoord)
+    middle:SetPoint("TOPLEFT", leftCap, "TOPRIGHT")
+    middle:SetPoint("BOTTOMRIGHT", rightCap, "BOTTOMLEFT")
+end
 
 local function AnchorSectionRight(button)
     if button.xpieAnchoring then return end
@@ -446,13 +486,7 @@ local function StyleSectionHeader(button)
     button.xpieSection = true
 
     local info = C_Texture.GetAtlasInfo(SECTION_BAR)
-    if info then
-        local bar = button:CreateTexture(nil, "BACKGROUND")
-        bar:SetAtlas(SECTION_BAR, false)
-        bar:SetHeight(info.height or 26)
-        bar:SetPoint("LEFT", button, "LEFT", -SECTION_BAR_PAD, 0)
-        bar:SetPoint("RIGHT", button, "RIGHT", SECTION_BAR_PAD, 0)
-    end
+    if info then DrawSectionBar(button, info) end
 
     if _G.ObjectiveTrackerHeaderFont then
         button:SetNormalFontObject(ObjectiveTrackerHeaderFont)
