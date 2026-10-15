@@ -406,6 +406,45 @@ local function StyleView(view, kind)
         hooksecurefunc(view.Bg, "SetPoint", FixBgLeft)
         FixBgLeft(view.Bg)
     end
+    -- Same background as the native Combined Backpack (texture, tint and
+    -- transparency), taken from the native frame at runtime. Baganator's skin
+    -- and its transparency setting keep re-applying their own, so the native
+    -- look is put back after each.
+    if view.Bg and view.Bg.SetAtlas then
+        local bg = view.Bg
+        local function MatchNative()
+            if bg.xpieMatching then return end
+            local native = _G.ContainerFrameCombinedBags
+            local src = native and native.Bg
+            if not (src and src.GetVertexColor and src ~= bg) then return end
+            bg.xpieMatching = true
+            local atlas = src:GetAtlas()
+            local texture = src:GetTexture()
+            local r, g, b, a = src:GetVertexColor()
+            if atlas then
+                bg:SetAtlas(atlas)
+            elseif texture then
+                bg:SetTexture(texture, src:GetHorizTile() and "REPEAT" or "CLAMP",
+                    src:GetVertTile() and "REPEAT" or "CLAMP")
+                bg:SetTexCoord(src:GetTexCoord())
+            else
+                bg:SetColorTexture(r, g, b, a or 1)
+            end
+            if atlas or texture then
+                bg:SetVertexColor(r, g, b, a or 1)
+            end
+            bg:SetDesaturated(src:IsDesaturated())
+            bg:SetBlendMode(src:GetBlendMode())
+            bg:SetAlpha(src:GetAlpha())
+            bg.xpieMatching = false
+        end
+        for _, method in ipairs({ "SetAtlas", "SetTexture", "SetColorTexture",
+                "SetVertexColor", "SetAlpha", "SetDesaturated", "SetTexCoord" }) do
+            if bg[method] then hooksecurefunc(bg, method, MatchNative) end
+        end
+        view:HookScript("OnShow", MatchNative)
+        MatchNative()
+    end
     -- The Combined Backpack is a flat portrait frame: no tile streaks.
     if view.TopTileStreaks then Stash(view.TopTileStreaks) end
 
