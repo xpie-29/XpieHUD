@@ -537,7 +537,13 @@ local function SectionBarHolder(button)
     holder:SetAllPoints(button)
     holder:SetFrameLevel(level)
     holder:EnableMouse(false)
-    holder:SetShown(button:IsShown())
+    -- Follows whether the header can actually be seen, not its own shown
+    -- flag: Baganator builds headers at login inside hidden layouts (the bag
+    -- is closed, and only one of a window's layouts is ever shown), where
+    -- IsShown() is true. The holder sits outside those layouts, so starting it
+    -- shown left a second title and bar showing through. OnShow / OnHide fire
+    -- on visibility changes, so after this the two stay in step.
+    holder:SetShown(button:IsVisible())
     button:HookScript("OnShow", function() holder:Show() end)
     button:HookScript("OnHide", function() holder:Hide() end)
     button.xpieHolder = holder
@@ -611,16 +617,6 @@ local function AnchorSectionRight(button)
     C_Timer.After(0, function() PlaceSectionBarLeft(button) end)
 end
 
-local hiddenFont
-local function HiddenFont()
-    if not hiddenFont then
-        hiddenFont = CreateFont("XpieHUDBaganatorHiddenFont")
-        hiddenFont:CopyFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
-        hiddenFont:SetTextColor(0, 0, 0, 0)
-    end
-    return hiddenFont
-end
-
 local function StyleSectionHeader(button)
     if button.xpieSection then return end
     button.xpieSection = true
@@ -634,25 +630,17 @@ local function StyleSectionHeader(button)
     -- button's frame level against the bar's was not reliable. The button's
     -- own text is hidden and mirrored.
     local owner = button.xpieHolder or button
-    do
+    -- Baganator gives the header its fontstring before announcing it.
+    local text = button:GetFontString()
+    if text then
         local title = owner:CreateFontString(nil, "OVERLAY")
         title:SetFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
         title:SetJustifyH("LEFT")
         title:SetWordWrap(false)
         title:SetPoint("LEFT", button, "LEFT", SECTION_TEXT_X, 0)
         title:SetPoint("RIGHT", button, "RIGHT", -(SECTION_TOGGLE + 4), 0)
-        -- The button's own text is hidden: its fontstring can be created only
-        -- when Baganator first sets the text, so it's looked up again on every
-        -- change, and the button's font objects are made invisible as well.
-        local hidden = HiddenFont()
-        button:SetNormalFontObject(hidden)
-        button:SetHighlightFontObject(hidden)
-        button:SetDisabledFontObject(hidden)
-        local function Sync()
-            local fs = button:GetFontString()
-            if fs then Stash(fs) end
-            title:SetText(button:GetText() or "")
-        end
+        Stash(text)
+        local function Sync() title:SetText(text:GetText() or "") end
         hooksecurefunc(button, "SetText", Sync)
         button:HookScript("OnShow", Sync)
         Sync()

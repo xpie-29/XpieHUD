@@ -105,6 +105,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.7.5**: Baganator: doubled section titles fixed at the cause (the title/bar holder started visible for headers built in hidden layouts at login); dropped the hidden-font workaround from 3.7.4.
 - **3.7.4**: Baganator: native flat background on every Baganator window (All Characters, Currencies); section title no longer doubles after a fresh login.
 - **3.7.3**: Baganator: removed the stray-text hiding and /xhudbag debug command (the doubled title was a stale load, not the code).
 - **3.7.2**: Baganator: window background is the native flat panel (FlatPanelBackgroundTemplate, PANEL_BACKGROUND_COLOR) instead of the textured one.

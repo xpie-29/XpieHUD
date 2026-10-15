@@ -2,7 +2,7 @@
 ## Title: XpieHUD - Zygor Guides
 ## Notes: XpieHUD extension: Zygor Guides in the XpieHUD style (transparent window, styled background panel, gold waypoint arrow) or its original look.
 ## Author: Jeremy / Xpie
-## Version: 3.7.4
+## Version: 3.7.5
 ## Dependencies: XpieHUD_Core
 ## Group: XpieHUD_Core
 ## IconTexture: Interface\AddOns\XpieHUD_Core\Media\icon
