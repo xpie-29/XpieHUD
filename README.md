@@ -105,6 +105,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.7.1**: Baganator: every stray header text hidden (no doubled titles); /xhudbag prints background details.
 - **3.7.0**: Baganator: window background copied from the native Combined Backpack (texture, tint, transparency).
 - **3.6.9**: Baganator: section titles in the bright gold of the Zygor headers and tracker quest names.
 - **3.6.8**: Baganator: section titles and -/+ drawn in the bar's own frame on a layer above the bar art, so they always sit over it.

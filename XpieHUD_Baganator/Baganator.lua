@@ -647,14 +647,34 @@ local function StyleSectionHeader(button)
     local owner = button.xpieHolder or button
     local text = button:GetFontString()
     if text then
-        Stash(text)
         local title = owner:CreateFontString(nil, "OVERLAY")
         title:SetFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
         title:SetJustifyH("LEFT")
         title:SetWordWrap(false)
         title:SetPoint("LEFT", button, "LEFT", SECTION_TEXT_X, 0)
         title:SetPoint("RIGHT", button, "RIGHT", -(SECTION_TOGGLE + 4), 0)
-        local function Sync() title:SetText(text:GetText() or "") end
+        -- Every other text on the header (the button's own, and any a
+        -- child frame carries) is hidden; the title shows the first one that
+        -- has text.
+        local originals = { text }
+        local function Collect(frame)
+            for _, region in ipairs({ frame:GetRegions() }) do
+                if region ~= title and region.GetText and region.GetFont then
+                    originals[#originals + 1] = region
+                end
+            end
+        end
+        Collect(button)
+        for _, child in ipairs({ button:GetChildren() }) do Collect(child) end
+        for _, region in ipairs(originals) do Stash(region) end
+        local function Sync()
+            local value = ""
+            for _, region in ipairs(originals) do
+                local t = region:GetText()
+                if t and t ~= "" then value = t; break end
+            end
+            title:SetText(value)
+        end
         hooksecurefunc(button, "SetText", Sync)
         button:HookScript("OnShow", Sync)
         Sync()
@@ -788,4 +808,50 @@ function module:BuildSettings(page)
     page:Checkbox({ key = "useProfile", label = "Set Up New Characters",
         description = "The first time each character logs in, set Baganator up with the XpieHUD profile (category layout, icon size and spacing). You can switch to another profile in Baganator afterwards." })
     page:Button("Apply XpieHUD Profile", function() module:ApplyProfile(false) end)
+end
+
+-- ---------------------------------------------------------------------------
+-- /xhudbag: prints how the native and Baganator backgrounds are built, for
+-- matching them.
+-- ---------------------------------------------------------------------------
+local function DescribeRegions(frame, label)
+    core:Print(label .. ": " .. (frame:GetName() or tostring(frame)) .. "  alpha " .. frame:GetAlpha()
+        .. "  level " .. frame:GetFrameLevel())
+    for key, value in pairs(frame) do
+        if type(value) == "table" and type(key) == "string" and value.GetObjectType then
+            local t = value:GetObjectType()
+            local extra = ""
+            if t == "Texture" then
+                local r, g, b, a = value:GetVertexColor()
+                extra = string.format(" atlas=%s tex=%s rgba=%.2f,%.2f,%.2f,%.2f alpha=%.2f shown=%s layer=%s",
+                    tostring(value:GetAtlas()), tostring(value:GetTexture()), r, g, b, a,
+                    value:GetAlpha(), tostring(value:IsShown()), tostring(value:GetDrawLayer()))
+            end
+            core:Print("   ." .. key .. " <" .. t .. ">" .. extra)
+        end
+    end
+    for _, region in ipairs({ frame:GetRegions() }) do
+        if region.GetObjectType and region:GetObjectType() == "Texture" then
+            local r, g, b, a = region:GetVertexColor()
+            core:Print(string.format("   region %s atlas=%s tex=%s rgba=%.2f,%.2f,%.2f,%.2f alpha=%.2f layer=%s",
+                tostring(region.GetParentKey and region:GetParentKey() or "?"), tostring(region:GetAtlas()),
+                tostring(region:GetTexture()), r, g, b, a, region:GetAlpha(), tostring(region:GetDrawLayer())))
+        end
+    end
+end
+
+SLASH_XPIEHUDBAG1 = "/xhudbag"
+SlashCmdList.XPIEHUDBAG = function()
+    if ContainerFrameCombinedBags then
+        DescribeRegions(ContainerFrameCombinedBags, "native")
+        if ContainerFrameCombinedBags.NineSlice then
+            DescribeRegions(ContainerFrameCombinedBags.NineSlice, "native NineSlice")
+        end
+    end
+    local skins = Baganator and Baganator.API and Baganator.API.Skins
+    for _, details in ipairs(skins and skins.GetAllFrames() or {}) do
+        if details.regionType == "ButtonFrame" then
+            DescribeRegions(details.region, "baganator " .. tostring(HasTag(details.tags, VIEW_TAGS)))
+        end
+    end
 end
