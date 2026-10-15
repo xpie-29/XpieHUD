@@ -105,7 +105,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
-
+- **3.6.8**: Baganator: section titles and -/+ drawn in the bar's own frame on a layer above the bar art, so they always sit over it.
 - **3.6.7**: Baganator: section titles reliably draw over the header bar (the shared clip frame took its level from the last header instead of the lowest).
 - **3.6.6**: Baganator: section bar's left end mirrors its right (same gap from the window edge); section titles draw above the bar again.
 - **3.6.5**: Baganator: section bars run to the window's left edge (clipped to the window) and, like the tracker, past the -/+ button; section titles at 13.

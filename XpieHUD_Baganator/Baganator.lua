@@ -517,6 +517,7 @@ local function SectionBarHolder(button)
     holder:SetShown(button:IsShown())
     button:HookScript("OnShow", function() holder:Show() end)
     button:HookScript("OnHide", function() holder:Hide() end)
+    button.xpieHolder = holder
     return holder
 end
 
@@ -595,17 +596,30 @@ local function StyleSectionHeader(button)
     if info then DrawSectionBar(button, info) end
 
     button:SetNormalFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
+    -- Title and -/+ are drawn in the bar's own frame, on a layer above the bar
+    -- art: layers within one frame always stack the same way, whereas the
+    -- button's frame level against the bar's was not reliable. The button's
+    -- own text is hidden and mirrored.
+    local owner = button.xpieHolder or button
     local text = button:GetFontString()
     if text then
-        text:ClearAllPoints()
-        text:SetPoint("LEFT", SECTION_TEXT_X, 0)
-        text:SetPoint("RIGHT", -(SECTION_TOGGLE + 4), 0)
+        Stash(text)
+        local title = owner:CreateFontString(nil, "OVERLAY")
+        title:SetFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
+        title:SetJustifyH("LEFT")
+        title:SetWordWrap(false)
+        title:SetPoint("LEFT", button, "LEFT", SECTION_TEXT_X, 0)
+        title:SetPoint("RIGHT", button, "RIGHT", -(SECTION_TOGGLE + 4), 0)
+        local function Sync() title:SetText(text:GetText() or "") end
+        hooksecurefunc(button, "SetText", Sync)
+        button:HookScript("OnShow", Sync)
+        Sync()
     end
 
     if button.arrow then button.arrow:Hide() end
-    local toggle = button:CreateTexture(nil, "ARTWORK")
+    local toggle = owner:CreateTexture(nil, "OVERLAY")
     toggle:SetSize(SECTION_TOGGLE, SECTION_TOGGLE)
-    toggle:SetPoint("RIGHT", 0, 0)
+    toggle:SetPoint("RIGHT", button, "RIGHT", 0, 0)
     toggle:SetAtlas(SECTION_COLLAPSE)
     local hover = button:CreateTexture(nil, "HIGHLIGHT")
     hover:SetAtlas(SECTION_HOVER)
