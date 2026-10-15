@@ -426,25 +426,66 @@ local function ApplyGear(panel)
 end
 
 -- ---------------------------------------------------------------------------
--- Scroll bar: Blizzard's minimal scroll bar art (MinimalScrollBar.xml) on
--- RXP's UIPanelScrollFrameTemplate buttons and thumb. RXP re-textures them in
--- RXPFrame.UpdateScrollBar on every theme reload; that is post-hooked.
+-- Scroll bar: Blizzard's minimal scroll bar (MinimalScrollBar.xml: 17x11
+-- arrow steppers, an 8px three-piece thumb) on RXP's UIPanelScrollFrame.
+-- RXP's buttons stay the real buttons. Their own state textures can't take
+-- the art: the template crops them (UIPanelScrollBarButton TexCoords
+-- .2-.8 / .25-.75), which cut the arrows and blew them up. So those are
+-- hidden by alpha and our textures drawn on the buttons instead. Everything
+-- is sized in the UI's scale, so it matches Blizzard's own scroll bars
+-- whatever scale RXP's window has.
 -- ---------------------------------------------------------------------------
-local SCROLL_ART = {
-    ScrollUpButton   = { "minimal-scrollbar-arrow-top", "minimal-scrollbar-arrow-top-over", "minimal-scrollbar-arrow-top-down" },
-    ScrollDownButton = { "minimal-scrollbar-arrow-bottom", "minimal-scrollbar-arrow-bottom-over", "minimal-scrollbar-arrow-bottom-down" },
+local SCROLL_ARROWS = {
+    ScrollUpButton   = { normal = "minimal-scrollbar-arrow-top", over = "minimal-scrollbar-arrow-top-over", down = "minimal-scrollbar-arrow-top-down" },
+    ScrollDownButton = { normal = "minimal-scrollbar-arrow-bottom", over = "minimal-scrollbar-arrow-bottom-over", down = "minimal-scrollbar-arrow-bottom-down" },
 }
--- The thumb is Blizzard's three-piece small thumb (top cap, stretched
--- middle, bottom cap) drawn over RXP's thumb, which stays in place (it's
--- what the scroll bar moves) but is made invisible.
+local ARROW_W, ARROW_H = 17, 11   -- Blizzard's stepper size
+local THUMB_W = 8                 -- Blizzard's thumb width
 local SCROLL_THUMB = {
     top    = "minimal-scrollbar-small-thumb-top",
     middle = "minimal-scrollbar-small-thumb-middle",
     bottom = "minimal-scrollbar-small-thumb-bottom",
 }
+local RXP_BUTTON_ART = { "Normal", "Pushed", "Disabled", "Highlight" }
 
 local function ScrollBar()
     return _G.RXPFrame.ScrollFrame and _G.RXPFrame.ScrollFrame.ScrollBar
+end
+
+-- UI units -> the region's own units.
+local function UIScale(region)
+    local s = region:GetEffectiveScale()
+    return (s and s > 0) and UIParent:GetEffectiveScale() / s or 1
+end
+
+local function ArrowSkin(button, art)
+    if button.xhudArrow then return button.xhudArrow end
+    local skin = { art = art, on = false, down = false }
+    skin.tex = button:CreateTexture(nil, "ARTWORK", nil, 2)
+    skin.tex:SetPoint("CENTER")
+    skin.glow = button:CreateTexture(nil, "HIGHLIGHT")
+    skin.glow:SetPoint("CENTER")
+    skin.glow:SetAtlas(art.over, false)
+    function skin.Update()
+        local shown = skin.on
+        skin.tex:SetShown(shown)
+        skin.glow:SetShown(shown)
+        if not shown then return end
+        local k = UIScale(button)
+        skin.tex:SetSize(ARROW_W * k, ARROW_H * k)
+        skin.glow:SetSize(ARROW_W * k, ARROW_H * k)
+        local enabled = button:IsEnabled()
+        skin.tex:SetAtlas((enabled and skin.down) and art.down or art.normal, false)
+        skin.tex:SetDesaturated(not enabled)
+        skin.tex:SetAlpha(enabled and 1 or 0.5)
+    end
+    button:HookScript("OnMouseDown", function() skin.down = true; skin.Update() end)
+    button:HookScript("OnMouseUp", function() skin.down = false; skin.Update() end)
+    button:HookScript("OnEnable", skin.Update)
+    button:HookScript("OnDisable", skin.Update)
+    button:HookScript("OnShow", skin.Update)
+    button.xhudArrow = skin
+    return skin
 end
 
 local function ThumbPieces(bar, thumb)
@@ -452,17 +493,23 @@ local function ThumbPieces(bar, thumb)
     local pieces = {}
     for key, atlas in pairs(SCROLL_THUMB) do
         local tx = bar:CreateTexture(nil, "OVERLAY", nil, 1)
-        tx:SetAtlas(atlas, key ~= "middle")   -- caps at their own size
+        tx:SetAtlas(atlas, false)
         pieces[key] = tx
     end
     pieces.top:SetPoint("TOP", thumb, "TOP")
     pieces.bottom:SetPoint("BOTTOM", thumb, "BOTTOM")
     pieces.middle:SetPoint("TOPLEFT", pieces.top, "BOTTOMLEFT")
     pieces.middle:SetPoint("BOTTOMRIGHT", pieces.bottom, "TOPRIGHT")
-    -- Shown while styled and while the scroll bar shows its thumb.
+    -- Shown while styled and while the scroll bar shows its thumb; caps at
+    -- their atlas size, in the UI's scale.
     function pieces.Sync()
-        local shown = bar.xhudStyled and thumb:IsShown()
-        for _, key in ipairs({ "top", "middle", "bottom" }) do pieces[key]:SetShown(shown and true or false) end
+        local shown = (bar.xhudStyled and thumb:IsShown()) and true or false
+        local k = UIScale(bar)
+        for _, key in ipairs({ "top", "bottom" }) do
+            local info = C_Texture.GetAtlasInfo(SCROLL_THUMB[key])
+            pieces[key]:SetSize(THUMB_W * k, ((info and info.height) or 4) * k)
+        end
+        for _, key in ipairs({ "top", "middle", "bottom" }) do pieces[key]:SetShown(shown) end
     end
     hooksecurefunc(thumb, "Show", pieces.Sync)
     hooksecurefunc(thumb, "Hide", pieces.Sync)
@@ -471,69 +518,50 @@ local function ThumbPieces(bar, thumb)
     return pieces
 end
 
+local function SetRXPScrollArtShown(bar, shown)
+    for key in pairs(SCROLL_ARROWS) do
+        local button = bar[key]
+        for _, field in ipairs(RXP_BUTTON_ART) do
+            local tx = button and button[field]
+            if tx then tx:SetAlpha(shown and 1 or 0) end
+        end
+    end
+    local thumb = bar:GetThumbTexture()
+    if thumb then thumb:SetAlpha(shown and 1 or 0) end
+end
+
 local function StyleScrollBar()
     if not XpieStyle() then return end   -- Original: RXP's UpdateScrollBar has just painted its own
     local bar = ScrollBar()
     if not (bar and C_Texture.GetAtlasInfo(SCROLL_THUMB.middle)) then return end
-    for key, art in pairs(SCROLL_ART) do
+    bar.xhudStyled = true
+    SetRXPScrollArtShown(bar, false)
+    for key, art in pairs(SCROLL_ARROWS) do
         local button = bar[key]
         if button then
-            local normal, over, down = art[1], art[2], art[3]
-            for field, atlas in pairs({ Normal = normal, Highlight = over, Pushed = down, Disabled = normal }) do
-                local tx = button[field]
-                if tx then
-                    if not tx.xhudPoints then   -- RXP's layout, for the Original style
-                        tx.xhudPoints = {}
-                        for i = 1, tx:GetNumPoints() do tx.xhudPoints[i] = { tx:GetPoint(i) } end
-                        tx.xhudBlend = tx:GetBlendMode()
-                    end
-                    -- At the atlas's own size: these are the bar's rounded end
-                    -- caps with the arrow in them, and squeezing them into
-                    -- RXP's button clipped the caps.
-                    tx:ClearAllPoints()
-                    tx:SetPoint("CENTER")
-                    tx:SetAtlas(atlas, true)
-                end
-            end
-            if button.Disabled then button.Disabled:SetDesaturated(true) end
-            if button.Highlight then button.Highlight:SetBlendMode("BLEND") end
+            local skin = ArrowSkin(button, art)
+            skin.on = true
+            skin.Update()
         end
     end
-    bar.xhudStyled = true
     local thumb = bar:GetThumbTexture()
-    local pieces = thumb and ThumbPieces(bar, thumb)
-    if pieces then
-        thumb:SetAlpha(0)
-        pieces.Sync()
-    end
+    if thumb then ThumbPieces(bar, thumb).Sync() end
 end
 
--- Original style: RXP's layout back, then RXP repaints its own art.
+-- Original style: our art off, RXP's back.
 local function RestoreScrollBar()
     local bar = ScrollBar()
     if not (bar and bar.xhudStyled) then return end
     bar.xhudStyled = nil
-    for key in pairs(SCROLL_ART) do
-        local button = bar[key]
-        for _, field in ipairs({ "Normal", "Highlight", "Pushed", "Disabled" }) do
-            local tx = button and button[field]
-            if tx and tx.xhudPoints then
-                tx:ClearAllPoints()
-                for _, p in ipairs(tx.xhudPoints) do tx:SetPoint(unpack(p)) end
-                if #tx.xhudPoints == 0 then tx:SetAllPoints() end
-                tx:SetTexCoord(0, 1, 0, 1)
-                tx:SetDesaturated(false)
-                if tx.xhudBlend then tx:SetBlendMode(tx.xhudBlend) end
-            end
+    for key in pairs(SCROLL_ARROWS) do
+        local skin = bar[key] and bar[key].xhudArrow
+        if skin then
+            skin.on = false
+            skin.Update()
         end
     end
-    local thumb = bar:GetThumbTexture()
-    if thumb then
-        thumb:SetTexCoord(0, 1, 0, 1)
-        thumb:SetAlpha(1)
-    end
     if bar.xhudThumb then bar.xhudThumb.Sync() end
-    if _G.RXPFrame.UpdateScrollBar then _G.RXPFrame.UpdateScrollBar() end
+    SetRXPScrollArtShown(bar, true)
 end
 
 -- ---------------------------------------------------------------------------
@@ -567,10 +595,13 @@ end
 -- part of the same HUD, at their own opacity (Current Step Background). RXP's own box and its title tab go transparent.
 local stepPanels = {}
 
+local STEP_PADDING = WINDOW_PANEL.padding - 2   -- a touch tighter than the window's
+
 local function StepPanelStyle()
     local style = CopyTable(WINDOW_PANEL)
     style.header, style.title = false, ""
     style.opacity = module.db.stepBackground or 25
+    style.padding = STEP_PADDING
     return style
 end
 
@@ -594,7 +625,7 @@ end
 -- window so the two never touch: RXP anchors its step area just below the
 -- window (or just above the title, near the top of the screen); post-hooked
 -- and pushed out by the room the background needs.
-local STEP_GAP = STEP_TAB_RISE + STEP_TOP_PAD + WINDOW_PANEL.padding + 4
+local STEP_GAP = 18   -- tab rise 5 + room 4 + background padding, + a few px from the window
 
 local function SpaceStepArea(frame, point, rel, relPoint, x, y)
     if frame.xhudSpacing or type(point) ~= "string" then return end

@@ -116,6 +116,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.8.5**: RestedXP: scroll bar drawn as its own textures at Blizzard's sizes in the UI scale (the old scroll button template cropped and enlarged the arrows); current step background 2px tighter on every side.
 - **3.8.4**: RestedXP: guide name at the Zygor guide tab's size; current step background frames the "Step" title with room above it, and the step area sits further below the window; the guide window panel is fixed (header bar titled "RestedXP", no background) and its settings removed; Current Step Background takes their place, default 25%.
 - **3.8.3**: RestedXP: smaller guide name font; scroll bar end caps at their native size (no longer clipped); resize grip invisible (still drags); new Current Step Background setting (default 10%) for the step boxes below the window.
 - **3.8.2**: RestedXP: guide name on its own line under the header bar (one line, truncated if narrow), step list moved down below it; new defaults: header title "RestedXP", no background, 5px padding. Core: Reset Panel can reset to a module's own defaults.
