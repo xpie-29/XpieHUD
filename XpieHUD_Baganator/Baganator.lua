@@ -499,10 +499,17 @@ local function SectionBarHolder(button)
     local view = FindView(button)
     if not view then return button end
     local clip = SectionClip(view)
-    -- One level below the header, so its title draws over the bar.
+    -- One level below the header, so its title draws over the bar. The clip is
+    -- shared by every header, so it takes the lowest level any of them needs
+    -- (setting it from the last header put it over the earlier headers' titles).
     if button:GetFrameLevel() < 1 then button:SetFrameLevel(1) end
+    clip:SetFrameStrata(button:GetFrameStrata())
     local level = button:GetFrameLevel() - 1
-    clip:SetFrameLevel(level)
+    if level < clip:GetFrameLevel() or not clip.xpieLevelSet then
+        clip:SetFrameLevel(level)
+        clip.xpieLevelSet = true
+    end
+    level = clip:GetFrameLevel()
     local holder = CreateFrame("Frame", nil, clip)
     holder:SetAllPoints(button)
     holder:SetFrameLevel(level)
