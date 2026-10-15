@@ -431,18 +431,27 @@ local SECTION_EXPAND   = "ui-questtrackerbutton-secondary-expand"     -- shown w
 local SECTION_HOVER    = "ui-questtrackerbutton-yellow-highlight"
 local SECTION_TEXT_X   = 0      -- title starts at the item icons' left edge
 local SECTION_TOGGLE   = 16
-local SECTION_EDGE     = 0      -- bar ends this far inside the window background's edges
+-- The art's ends fade out over ~17px; the tracker lets the faded ends
+-- overhang, so its gold line runs from well before the title to just past the
+-- -/+ button. Here: the bar reaches well past the window's left edge and is
+-- clipped there, so the line runs right to the edge, and on the right the
+-- line ends 2px past the -/+ button.
+local SECTION_FADE      = 17    -- tuned in game
+local SECTION_LINE_PAST_TOGGLE = 2
+local SECTION_LEFT_REACH = 60   -- bar starts this far left of the header (clipped at the window)
+local SECTION_FONT_SIZE = 13    -- section titles (tracker quest names are 12 by default)
 -- The art fades in and out at its ends; stretched as one piece the fades
 -- stretch too. Drawn as three slices instead: both ends at native size, only
 -- the even middle stretched.
 local SECTION_BAR_CAP  = 0.15   -- share of the art's width kept unstretched at each end
 
 -- Fonts as the tracker sizes them: section headers like quest names, category
--- labels like objective lines. Both use ObjectiveTrackerLineFont (which
--- follows the tracker's Edit Mode text size); quest names in the tracker's
--- "Header" gold, objectives in its "Normal" off-white (OBJECTIVE_TRACKER_COLOR).
+-- labels like objective lines. Both copy ObjectiveTrackerLineFont: labels at
+-- its size (the tracker's Edit Mode text size), section titles at a fixed 13;
+-- titles in the tracker's quest-name "Header" gold, labels in its objective
+-- "Normal" off-white (OBJECTIVE_TRACKER_COLOR).
 local trackerFonts = {}
-local function TrackerFont(kind)
+local function TrackerFont(kind, size)
     if trackerFonts[kind] then return trackerFonts[kind] end
     local base = _G.ObjectiveTrackerLineFont or GameFontNormal
     local colors = _G.OBJECTIVE_TRACKER_COLOR
@@ -450,6 +459,10 @@ local function TrackerFont(kind)
         or (kind == "Header" and NORMAL_FONT_COLOR or { r = 0.8, g = 0.8, b = 0.8 })
     local font = CreateFont("XpieHUDBaganator" .. kind .. "Font")
     font:CopyFontObject(base)
+    if size then
+        local path, _, flags = font:GetFont()
+        if path then font:SetFont(path, size, flags or "") end
+    end
     font:SetTextColor(color.r, color.g, color.b)
     trackerFonts[kind] = font
     return font
@@ -469,33 +482,46 @@ local function FindView(region)
     end
 end
 
--- The bar's ends follow the window, its height follows the header; one
--- anchor can't take x from one frame and y from another, so the ends are
--- offset from the header by the measured distance to the window's edges.
-local function PlaceSectionBar(button)
-    local bar = button.xpieBar
-    if not bar then return end
-    local leftX, rightX = 0, 0
-    local view = button.xpieView or FindView(button)
-    button.xpieView = view
-    local bg = view and view.Bg
-    local bl, br = button:GetLeft(), button:GetRight()
-    local gl, gr = bg and bg:GetLeft(), bg and bg:GetRight()
-    if bl and br and gl and gr then
-        leftX, rightX = gl - bl + SECTION_EDGE, gr - br - SECTION_EDGE
+-- Section bars are drawn in a frame that clips to the window background, so
+-- a bar can reach past the window's edges and is cut cleanly at them.
+local function SectionClip(view)
+    if not view.xpieSectionClip then
+        local clip = CreateFrame("Frame", nil, view)
+        clip:SetClipsChildren(true)
+        clip:SetAllPoints(view.Bg or view)
+        clip:EnableMouse(false)
+        view.xpieSectionClip = clip
     end
-    bar.left:SetPoint("LEFT", button, "LEFT", leftX, 0)
-    bar.right:SetPoint("RIGHT", button, "RIGHT", rightX, 0)
+    return view.xpieSectionClip
+end
+
+-- The frame the bar is drawn on: a holder over the header inside the window's
+-- clip frame (following the header's visibility), or the header itself.
+local function SectionBarHolder(button)
+    local view = FindView(button)
+    if not view then return button end
+    local container = button:GetParent()
+    local clip = SectionClip(view)
+    clip:SetFrameLevel(container:GetFrameLevel())
+    local holder = CreateFrame("Frame", nil, clip)
+    holder:SetAllPoints(button)
+    holder:SetFrameLevel(container:GetFrameLevel())
+    holder:EnableMouse(false)
+    holder:SetShown(button:IsShown())
+    button:HookScript("OnShow", function() holder:Show() end)
+    button:HookScript("OnHide", function() holder:Hide() end)
+    return holder
 end
 
 local function DrawSectionBar(button, info)
     local height = info.height or 26
     local file = info.file or info.filename
     local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+    local owner = SectionBarHolder(button)
     local bar = {}
     if not (file and l and r and t and b and info.width) then
         -- Atlas details unavailable: one stretched piece.
-        local whole = button:CreateTexture(nil, "BACKGROUND")
+        local whole = owner:CreateTexture(nil, "BACKGROUND")
         whole:SetAtlas(SECTION_BAR, false)
         whole:SetHeight(height)
         bar.left, bar.right = whole, whole
@@ -503,7 +529,7 @@ local function DrawSectionBar(button, info)
         local capWidth = math.floor(info.width * SECTION_BAR_CAP + 0.5)
         local capCoord = (r - l) * SECTION_BAR_CAP
         local function Slice(left, right)
-            local slice = button:CreateTexture(nil, "BACKGROUND")
+            local slice = owner:CreateTexture(nil, "BACKGROUND")
             slice:SetTexture(file)
             slice:SetTexCoord(left, right, t, b)
             slice:SetHeight(height)
@@ -517,8 +543,11 @@ local function DrawSectionBar(button, info)
         middle:SetPoint("TOPLEFT", bar.left, "TOPRIGHT")
         middle:SetPoint("BOTTOMRIGHT", bar.right, "BOTTOMLEFT")
     end
+    -- Left: well past the window edge (clipped there). Right: the gold line
+    -- ends just past the -/+ button, its faded end beyond it.
+    bar.left:SetPoint("LEFT", owner, "LEFT", -SECTION_LEFT_REACH, 0)
+    bar.right:SetPoint("RIGHT", owner, "RIGHT", SECTION_LINE_PAST_TOGGLE + SECTION_FADE, 0)
     button.xpieBar = bar
-    PlaceSectionBar(button)
 end
 
 local function AnchorSectionRight(button)
@@ -528,9 +557,6 @@ local function AnchorSectionRight(button)
     button.xpieAnchoring = true
     button:SetPoint("RIGHT", container, "RIGHT", 0, 0)
     button.xpieAnchoring = false
-    PlaceSectionBar(button)
-    -- Again once this layout pass has settled (the window may resize after).
-    C_Timer.After(0, function() PlaceSectionBar(button) end)
 end
 
 local function StyleSectionHeader(button)
@@ -540,7 +566,7 @@ local function StyleSectionHeader(button)
     local info = C_Texture.GetAtlasInfo(SECTION_BAR)
     if info then DrawSectionBar(button, info) end
 
-    button:SetNormalFontObject(TrackerFont("Header"))
+    button:SetNormalFontObject(TrackerFont("Header", SECTION_FONT_SIZE))
     local text = button:GetFontString()
     if text then
         text:ClearAllPoints()
@@ -564,11 +590,8 @@ local function StyleSectionHeader(button)
         hooksecurefunc(button, "SetCollapsed", function() toggle:SetAtlas(SECTION_EXPAND) end)
     end
 
-    -- Stretch the button to the right edge of the item area, and keep the
-    -- bar on the window's edges as the window changes size.
+    -- Stretch the button to the right edge of the item area.
     hooksecurefunc(button, "SetPoint", AnchorSectionRight)
-    button:HookScript("OnSizeChanged", PlaceSectionBar)
-    button:HookScript("OnShow", PlaceSectionBar)
     AnchorSectionRight(button)
 end
 
