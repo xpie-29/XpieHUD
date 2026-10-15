@@ -106,6 +106,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.6.6**: Baganator: section bar's left end mirrors its right (same gap from the window edge); section titles draw above the bar again.
 - **3.6.5**: Baganator: section bars run to the window's left edge (clipped to the window) and, like the tracker, past the -/+ button; section titles at 13.
 - **3.6.4**: Baganator: section headers in the tracker's quest-name font and gold, category labels in its objective-line font and off-white.
 - **3.6.3**: Baganator: section header bars run to the bag window's edges; header titles line up with the first item icon and the -/+ button with the last.

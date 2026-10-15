@@ -2,7 +2,7 @@
 ## Title: XpieHUD - Baganator
 ## Notes: XpieHUD extension: Baganator's bag, bank and guild bank windows in the style of Blizzard's Combined Backpack.
 ## Author: Jeremy / Xpie
-## Version: 3.6.5
+## Version: 3.6.6
 ## Dependencies: XpieHUD_Core, Baganator
 ## Group: XpieHUD_Core
 ## IconTexture: Interface\AddOns\XpieHUD_Core\Media\icon

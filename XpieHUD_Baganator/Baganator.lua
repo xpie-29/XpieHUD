@@ -433,12 +433,10 @@ local SECTION_TEXT_X   = 0      -- title starts at the item icons' left edge
 local SECTION_TOGGLE   = 16
 -- The art's ends fade out over ~17px; the tracker lets the faded ends
 -- overhang, so its gold line runs from well before the title to just past the
--- -/+ button. Here: the bar reaches well past the window's left edge and is
--- clipped there, so the line runs right to the edge, and on the right the
--- line ends 2px past the -/+ button.
+-- -/+ button. Here: on the right the line ends 2px past the -/+ button, and
+-- on the left it starts the same distance inside the window's edge.
 local SECTION_FADE      = 17    -- tuned in game
 local SECTION_LINE_PAST_TOGGLE = 2
-local SECTION_LEFT_REACH = 60   -- bar starts this far left of the header (clipped at the window)
 local SECTION_FONT_SIZE = 13    -- section titles (tracker quest names are 12 by default)
 -- The art fades in and out at its ends; stretched as one piece the fades
 -- stretch too. Drawn as three slices instead: both ends at native size, only
@@ -500,17 +498,37 @@ end
 local function SectionBarHolder(button)
     local view = FindView(button)
     if not view then return button end
-    local container = button:GetParent()
     local clip = SectionClip(view)
-    clip:SetFrameLevel(container:GetFrameLevel())
+    -- One level below the header, so its title draws over the bar.
+    if button:GetFrameLevel() < 1 then button:SetFrameLevel(1) end
+    local level = button:GetFrameLevel() - 1
+    clip:SetFrameLevel(level)
     local holder = CreateFrame("Frame", nil, clip)
     holder:SetAllPoints(button)
-    holder:SetFrameLevel(container:GetFrameLevel())
+    holder:SetFrameLevel(level)
     holder:EnableMouse(false)
     holder:SetShown(button:IsShown())
     button:HookScript("OnShow", function() holder:Show() end)
     button:HookScript("OnHide", function() holder:Hide() end)
     return holder
+end
+
+-- Left: the gold line starts as far inside the window's left edge as it ends
+-- inside the right one. That gap depends on the window's layout, so it's
+-- measured whenever Baganator lays the header out.
+local function PlaceSectionBarLeft(button)
+    local bar = button.xpieBar
+    if not bar then return end
+    local leftX = -SECTION_FADE
+    local view = FindView(button)
+    local bg = view and view.Bg
+    local bl, br = button:GetLeft(), button:GetRight()
+    local gl, gr = bg and bg:GetLeft(), bg and bg:GetRight()
+    if bl and br and gl and gr then
+        local gap = gr - br - SECTION_LINE_PAST_TOGGLE   -- right-hand gap
+        leftX = (gl - bl) + gap - SECTION_FADE
+    end
+    bar.left:SetPoint("LEFT", button, "LEFT", leftX, 0)
 end
 
 local function DrawSectionBar(button, info)
@@ -543,11 +561,11 @@ local function DrawSectionBar(button, info)
         middle:SetPoint("TOPLEFT", bar.left, "TOPRIGHT")
         middle:SetPoint("BOTTOMRIGHT", bar.right, "BOTTOMLEFT")
     end
-    -- Left: well past the window edge (clipped there). Right: the gold line
-    -- ends just past the -/+ button, its faded end beyond it.
-    bar.left:SetPoint("LEFT", owner, "LEFT", -SECTION_LEFT_REACH, 0)
+    -- Right: the gold line ends just past the -/+ button, its faded end
+    -- beyond it (clipped at the window).
     bar.right:SetPoint("RIGHT", owner, "RIGHT", SECTION_LINE_PAST_TOGGLE + SECTION_FADE, 0)
     button.xpieBar = bar
+    PlaceSectionBarLeft(button)
 end
 
 local function AnchorSectionRight(button)
@@ -557,6 +575,9 @@ local function AnchorSectionRight(button)
     button.xpieAnchoring = true
     button:SetPoint("RIGHT", container, "RIGHT", 0, 0)
     button.xpieAnchoring = false
+    PlaceSectionBarLeft(button)
+    -- Again once this layout pass has settled (the window may resize after).
+    C_Timer.After(0, function() PlaceSectionBarLeft(button) end)
 end
 
 local function StyleSectionHeader(button)
@@ -592,6 +613,8 @@ local function StyleSectionHeader(button)
 
     -- Stretch the button to the right edge of the item area.
     hooksecurefunc(button, "SetPoint", AnchorSectionRight)
+    button:HookScript("OnSizeChanged", PlaceSectionBarLeft)
+    button:HookScript("OnShow", PlaceSectionBarLeft)
     AnchorSectionRight(button)
 end
 
