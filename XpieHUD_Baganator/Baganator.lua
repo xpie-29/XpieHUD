@@ -419,7 +419,7 @@ end
 -- Category section headers ("Equipment", "Crafting") as Objective Tracker
 -- section headers ("Campaign", "Quests"): the gold
 -- "UI-QuestTracker-Secondary-Objective-Header" bar across the bag window,
--- the title in the tracker's header font lined up with the first item icon,
+-- the title in the font and gold of a tracker quest name, lined up with the first item icon,
 -- and the tracker's -/+ button lined up with the last icon, instead of
 -- Baganator's arrow (ObjectiveTrackerModuleHeaderTemplate).
 -- The header button spans the item area, so clicking anywhere on it still
@@ -436,6 +436,30 @@ local SECTION_EDGE     = 0      -- bar ends this far inside the window backgroun
 -- stretch too. Drawn as three slices instead: both ends at native size, only
 -- the even middle stretched.
 local SECTION_BAR_CAP  = 0.15   -- share of the art's width kept unstretched at each end
+
+-- Fonts as the tracker sizes them: section headers like quest names, category
+-- labels like objective lines. Both use ObjectiveTrackerLineFont (which
+-- follows the tracker's Edit Mode text size); quest names in the tracker's
+-- "Header" gold, objectives in its "Normal" off-white (OBJECTIVE_TRACKER_COLOR).
+local trackerFonts = {}
+local function TrackerFont(kind)
+    if trackerFonts[kind] then return trackerFonts[kind] end
+    local base = _G.ObjectiveTrackerLineFont or GameFontNormal
+    local colors = _G.OBJECTIVE_TRACKER_COLOR
+    local color = colors and colors[kind]
+        or (kind == "Header" and NORMAL_FONT_COLOR or { r = 0.8, g = 0.8, b = 0.8 })
+    local font = CreateFont("XpieHUDBaganator" .. kind .. "Font")
+    font:CopyFontObject(base)
+    font:SetTextColor(color.r, color.g, color.b)
+    trackerFonts[kind] = font
+    return font
+end
+
+local function StyleCategoryLabel(label)
+    if label.xpieLabel or not label.SetNormalFontObject then return end
+    label.xpieLabel = true
+    label:SetNormalFontObject(TrackerFont("Normal"))
+end
 
 local function FindView(region)
     local parent = region:GetParent()
@@ -516,9 +540,7 @@ local function StyleSectionHeader(button)
     local info = C_Texture.GetAtlasInfo(SECTION_BAR)
     if info then DrawSectionBar(button, info) end
 
-    if _G.ObjectiveTrackerHeaderFont then
-        button:SetNormalFontObject(ObjectiveTrackerHeaderFont)
-    end
+    button:SetNormalFontObject(TrackerFont("Header"))
     local text = button:GetFontString()
     if text then
         text:ClearAllPoints()
@@ -579,6 +601,8 @@ local function OnFrame(details)
         end
     elseif regionType == "CategorySectionHeader" then
         StyleSectionHeader(region)
+    elseif regionType == "CategoryLabel" then
+        StyleCategoryLabel(region)
     elseif regionType == "ButtonFrame" then
         local kind = HasTag(tags, VIEW_TAGS)
         if kind then StyleView(region, kind) end

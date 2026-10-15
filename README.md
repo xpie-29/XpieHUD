@@ -65,7 +65,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
   - The native **Clean Up Bags** button sits at the end of the search box, as on the native bag. Right-click still gives Baganator's own sort options.
   - The **Currencies** button matches the gear (same size and square frame, with hover and pressed states) and sits bottom-left, with the coin box to its right. Other bottom buttons become flat, native-size icon buttons.
   - The money line sits in Blizzard's **coin box**.
-  - Category sections ("Equipment", "Crafting") look like the Objective Tracker's section headers: the gold bar, the tracker's header font, and its -/+ button at the right end. Click anywhere on the bar to collapse or expand; right-click still transfers the section.
+  - Category sections ("Equipment", "Crafting") look like the Objective Tracker's section headers: the gold bar, the title in the font and gold of a tracker quest name, and its -/+ button at the right end. Category labels use the font and off-white of the tracker's objective lines. Click anywhere on the bar to collapse or expand; right-click still transfers the section.
 - **Baganator Profile**: XpieHUD can set each character's Baganator up with its own profile (category layout, icon size, spacing) the first time the character logs in, using Baganator's own import. It becomes the Baganator profile "XpieHUD"; switch profiles in Baganator any time. The XpieHUD settings page can re-apply it or turn this off.
 - **Original**: leaves Baganator completely alone. Changing the style takes effect after `/reload`.
 
@@ -106,6 +106,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.6.4**: Baganator: section headers in the tracker's quest-name font and gold, category labels in its objective-line font and off-white.
 - **3.6.3**: Baganator: section header bars run to the bag window's edges; header titles line up with the first item icon and the -/+ button with the last.
 - **3.6.2**: Baganator: section header bars drawn in three slices so their ends keep the tracker's short fade at any window width, placed like the tracker's (art from just before the title to just past the -/+ button).
 - **3.6.1**: Baganator: no gap inside the window's left border (the background now sits 2px in, like the native bag, at any column count).
