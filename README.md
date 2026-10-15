@@ -106,6 +106,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 
 ## Version History
 
+- **3.6.3**: Baganator: section header bars run to the bag window's edges; header titles line up with the first item icon and the -/+ button with the last.
 - **3.6.2**: Baganator: section header bars drawn in three slices so their ends keep the tracker's short fade at any window width, placed like the tracker's (art from just before the title to just past the -/+ button).
 - **3.6.1**: Baganator: no gap inside the window's left border (the background now sits 2px in, like the native bag, at any column count).
 - **3.6.0**: Baganator: category sections ("Equipment", "Crafting") as Objective Tracker section headers (gold bar, tracker font, the tracker's -/+ button). New: set each character's Baganator up with an XpieHUD profile through Baganator's own import (profile still to be added). Currencies button lined up with the coin box.

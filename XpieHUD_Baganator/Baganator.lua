@@ -418,58 +418,83 @@ end
 -- ---------------------------------------------------------------------------
 -- Category section headers ("Equipment", "Crafting") as Objective Tracker
 -- section headers ("Campaign", "Quests"): the gold
--- "UI-QuestTracker-Secondary-Objective-Header" bar across the item area, the
--- tracker's header font 7px in, and the tracker's -/+ button at the right
--- end instead of Baganator's arrow (ObjectiveTrackerModuleHeaderTemplate).
--- The whole bar is the button, so clicking anywhere on it still collapses /
--- expands, and right-click still transfers the section.
+-- "UI-QuestTracker-Secondary-Objective-Header" bar across the bag window,
+-- the title in the tracker's header font lined up with the first item icon,
+-- and the tracker's -/+ button lined up with the last icon, instead of
+-- Baganator's arrow (ObjectiveTrackerModuleHeaderTemplate).
+-- The header button spans the item area, so clicking anywhere on it still
+-- collapses / expands, and right-click still transfers the section.
 -- ---------------------------------------------------------------------------
 local SECTION_BAR      = "UI-QuestTracker-Secondary-Objective-Header"
 local SECTION_COLLAPSE = "ui-questtrackerbutton-secondary-collapse"   -- shown while expanded (-)
 local SECTION_EXPAND   = "ui-questtrackerbutton-secondary-expand"     -- shown while collapsed (+)
 local SECTION_HOVER    = "ui-questtrackerbutton-yellow-highlight"
-local SECTION_TEXT_X   = 7
+local SECTION_TEXT_X   = 0      -- title starts at the item icons' left edge
 local SECTION_TOGGLE   = 16
--- Placed like the tracker's: the art starts 10px before the text and ends
--- just past the -/+ button (measured on the live tracker).
-local SECTION_BAR_LEFT  = -3
-local SECTION_BAR_RIGHT = 5
+local SECTION_EDGE     = 0      -- bar ends this far inside the window background's edges
 -- The art fades in and out at its ends; stretched as one piece the fades
 -- stretch too. Drawn as three slices instead: both ends at native size, only
 -- the even middle stretched.
-local SECTION_BAR_CAP   = 0.15   -- share of the art's width kept unstretched at each end
+local SECTION_BAR_CAP  = 0.15   -- share of the art's width kept unstretched at each end
+
+local function FindView(region)
+    local parent = region:GetParent()
+    while parent do
+        if parent.xpieKind then return parent end
+        parent = parent:GetParent()
+    end
+end
+
+-- The bar's ends follow the window, its height follows the header; one
+-- anchor can't take x from one frame and y from another, so the ends are
+-- offset from the header by the measured distance to the window's edges.
+local function PlaceSectionBar(button)
+    local bar = button.xpieBar
+    if not bar then return end
+    local leftX, rightX = 0, 0
+    local view = button.xpieView or FindView(button)
+    button.xpieView = view
+    local bg = view and view.Bg
+    local bl, br = button:GetLeft(), button:GetRight()
+    local gl, gr = bg and bg:GetLeft(), bg and bg:GetRight()
+    if bl and br and gl and gr then
+        leftX, rightX = gl - bl + SECTION_EDGE, gr - br - SECTION_EDGE
+    end
+    bar.left:SetPoint("LEFT", button, "LEFT", leftX, 0)
+    bar.right:SetPoint("RIGHT", button, "RIGHT", rightX, 0)
+end
 
 local function DrawSectionBar(button, info)
     local height = info.height or 26
     local file = info.file or info.filename
     local l, r, t, b = info.leftTexCoord, info.rightTexCoord, info.topTexCoord, info.bottomTexCoord
+    local bar = {}
     if not (file and l and r and t and b and info.width) then
         -- Atlas details unavailable: one stretched piece.
-        local bar = button:CreateTexture(nil, "BACKGROUND")
-        bar:SetAtlas(SECTION_BAR, false)
-        bar:SetHeight(height)
-        bar:SetPoint("LEFT", button, "LEFT", SECTION_BAR_LEFT, 0)
-        bar:SetPoint("RIGHT", button, "RIGHT", SECTION_BAR_RIGHT, 0)
-        return
+        local whole = button:CreateTexture(nil, "BACKGROUND")
+        whole:SetAtlas(SECTION_BAR, false)
+        whole:SetHeight(height)
+        bar.left, bar.right = whole, whole
+    else
+        local capWidth = math.floor(info.width * SECTION_BAR_CAP + 0.5)
+        local capCoord = (r - l) * SECTION_BAR_CAP
+        local function Slice(left, right)
+            local slice = button:CreateTexture(nil, "BACKGROUND")
+            slice:SetTexture(file)
+            slice:SetTexCoord(left, right, t, b)
+            slice:SetHeight(height)
+            return slice
+        end
+        bar.left = Slice(l, l + capCoord)
+        bar.left:SetWidth(capWidth)
+        bar.right = Slice(r - capCoord, r)
+        bar.right:SetWidth(capWidth)
+        local middle = Slice(l + capCoord, r - capCoord)
+        middle:SetPoint("TOPLEFT", bar.left, "TOPRIGHT")
+        middle:SetPoint("BOTTOMRIGHT", bar.right, "BOTTOMLEFT")
     end
-    local capWidth = math.floor(info.width * SECTION_BAR_CAP + 0.5)
-    local capCoord = (r - l) * SECTION_BAR_CAP
-    local function Slice(left, right)
-        local slice = button:CreateTexture(nil, "BACKGROUND")
-        slice:SetTexture(file)
-        slice:SetTexCoord(left, right, t, b)
-        slice:SetHeight(height)
-        return slice
-    end
-    local leftCap = Slice(l, l + capCoord)
-    leftCap:SetWidth(capWidth)
-    leftCap:SetPoint("LEFT", button, "LEFT", SECTION_BAR_LEFT, 0)
-    local rightCap = Slice(r - capCoord, r)
-    rightCap:SetWidth(capWidth)
-    rightCap:SetPoint("RIGHT", button, "RIGHT", SECTION_BAR_RIGHT, 0)
-    local middle = Slice(l + capCoord, r - capCoord)
-    middle:SetPoint("TOPLEFT", leftCap, "TOPRIGHT")
-    middle:SetPoint("BOTTOMRIGHT", rightCap, "BOTTOMLEFT")
+    button.xpieBar = bar
+    PlaceSectionBar(button)
 end
 
 local function AnchorSectionRight(button)
@@ -479,6 +504,9 @@ local function AnchorSectionRight(button)
     button.xpieAnchoring = true
     button:SetPoint("RIGHT", container, "RIGHT", 0, 0)
     button.xpieAnchoring = false
+    PlaceSectionBar(button)
+    -- Again once this layout pass has settled (the window may resize after).
+    C_Timer.After(0, function() PlaceSectionBar(button) end)
 end
 
 local function StyleSectionHeader(button)
@@ -501,7 +529,7 @@ local function StyleSectionHeader(button)
     if button.arrow then button.arrow:Hide() end
     local toggle = button:CreateTexture(nil, "ARTWORK")
     toggle:SetSize(SECTION_TOGGLE, SECTION_TOGGLE)
-    toggle:SetPoint("RIGHT", 1, 0)
+    toggle:SetPoint("RIGHT", 0, 0)
     toggle:SetAtlas(SECTION_COLLAPSE)
     local hover = button:CreateTexture(nil, "HIGHLIGHT")
     hover:SetAtlas(SECTION_HOVER)
@@ -514,8 +542,11 @@ local function StyleSectionHeader(button)
         hooksecurefunc(button, "SetCollapsed", function() toggle:SetAtlas(SECTION_EXPAND) end)
     end
 
-    -- Stretch the button (and so the bar) to the right edge of the item area.
+    -- Stretch the button to the right edge of the item area, and keep the
+    -- bar on the window's edges as the window changes size.
     hooksecurefunc(button, "SetPoint", AnchorSectionRight)
+    button:HookScript("OnSizeChanged", PlaceSectionBar)
+    button:HookScript("OnShow", PlaceSectionBar)
     AnchorSectionRight(button)
 end
 
