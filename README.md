@@ -61,7 +61,7 @@ Choose a **Style**:
 Choose a **Style**:
 - **XpieHUD** (default), for RestedXP's guide window:
   - An **"XpieHUD" RestedXP theme** is registered and selected (it also appears in RestedXP's own theme list): Blizzard's native UI font, no RestedXP borders, transparent step rows with a faint gold hover, and Blizzard's dark tooltip colour behind RestedXP's other boxes (active steps, item and target buttons).
-  - A **native background panel** sits behind the guide window, with its gold header bar laid over the guide title, shown in Blizzard's gold font after the gear. Same panel options as the Zygor extension.
+  - A **native background panel** sits behind the guide window, with its gold header bar on top titled "RestedXP" (any text, or none), and the current guide's name on its own line just below it in Blizzard's gold font. Defaults: no background behind the guide text, 5px padding. Same panel options as the Zygor extension.
   - RestedXP's cog becomes Blizzard's **gold settings gear** at the left of the header bar (same menu). The RestedXP logo, class icon and banners are hidden.
   - Native **minimal scroll bar** and **settings checkboxes** on the active steps; step titles ("Step 3") in Blizzard's gold.
 - **Original**: puts your previous RestedXP theme back and leaves RestedXP alone. RestedXP's beta "V2" window isn't styled yet.
@@ -116,6 +116,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.8.2**: RestedXP: guide name on its own line under the header bar (one line, truncated if narrow), step list moved down below it; new defaults: header title "RestedXP", no background, 5px padding. Core: Reset Panel can reset to a module's own defaults.
 - **3.8.1**: RestedXP: active steps get the native panel body (no more blue box); step list starts below the title bar; Blizzard's three-piece scroll thumb; footer version line in grey.
 - **3.8.0**: New extension XpieHUD - RestedXP Guides: XpieHUD theme for RestedXP, native panel and header bar behind the guide window, gold gear, native scroll bar and checkboxes.
 - **3.7.5**: Baganator: doubled section titles fixed at the cause (the title/bar holder started visible for headers built in hidden layouts at login); dropped the hidden-font workaround from 3.7.4.

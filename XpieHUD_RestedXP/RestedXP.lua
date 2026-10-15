@@ -35,9 +35,12 @@ local MEDIA_DIR  = "Interface\\AddOns\\XpieHUD_RestedXP\\Media\\"
 -- it for anything we don't replace (Textures/DarkMode in RXPGuides).
 local RXP_ART    = "Interface/AddOns/RXPGuides/Textures/DarkMode/"
 
--- The guide window's panel has no title of its own: the guide name is the title.
+-- Shipping defaults (Jeremy's setup): "RestedXP" on the header bar (the
+-- guide name sits under it), no background behind the guide text, 5px padding.
 local panelDefaults = CopyTable(core.PANEL_DEFAULTS)
-panelDefaults.title = ""
+panelDefaults.title   = "RestedXP"
+panelDefaults.opacity = 0
+panelDefaults.padding = 5
 
 local module = core:RegisterModule("restedxp", {
     title = "RestedXP Guides",
@@ -202,16 +205,29 @@ local function ApplyChrome(on)
 end
 
 -- ---------------------------------------------------------------------------
--- Guide title: the native gold font (GameFontNormal), left-aligned on the
--- header bar after the gear. RXP sets its own font and colour on setup and
--- theme changes; those calls are post-hooked.
+-- Guide name: on its own line just under the header bar (the bar carries the
+-- panel's title, after the gear), like the guide tab under Zygor's title.
+-- Native gold font (GameFontNormal), left-aligned with the step text, one
+-- line: RXP's two-line name ("Guide\n(1-90) Default") is joined with a
+-- space and truncated if the window is narrow. RXP sets its own font, colour
+-- and text on setup, theme changes and guide loads; those calls are
+-- post-hooked. The step list starts below the name line.
 -- ---------------------------------------------------------------------------
 local GEAR_SIZE, GEAR_X, GEAR_Y = 27, 4, -2   -- as XpieHUD_Zygor (Blizzard's Damage Meter gear)
-local TITLE_LEFT  = GEAR_X + GEAR_SIZE + 5
+local TITLE_LEFT  = GEAR_X + GEAR_SIZE + 5    -- panel title on the header bar
 local TITLE_RIGHT = 8
+local NAME_X      = 7     -- guide name inset: Blizzard's tracker title inset
+local NAME_GAP    = 2     -- header bar to guide name
+local NAME_LINE   = 14    -- the name line's height (GameFontNormal)
+local LIST_GAP    = 4     -- guide name to step list
 local RXP_TITLE_LEFT, RXP_TITLE_SIZE = 29, 11   -- RXP's own (GuideWindow.lua)
 
 local styling = false
+
+local function OneLine(value)
+    return (value:gsub("%s*\n%s*", " "))
+end
+
 local function StyleTitle(text)
     if styling then return end
     styling = true
@@ -222,9 +238,15 @@ local function StyleTitle(text)
         text:SetShadowColor(0, 0, 0, 1)
         text:SetShadowOffset(1, -1)
         text:ClearAllPoints()
-        text:SetPoint("LEFT", name, "LEFT", TITLE_LEFT, 0)
+        text:SetPoint("TOPLEFT", name, "BOTTOMLEFT", NAME_X, -NAME_GAP)
         text:SetPoint("RIGHT", name, "RIGHT", -TITLE_RIGHT, 0)
         text:SetJustifyH("LEFT")
+        text:SetJustifyV("TOP")
+        text:SetWordWrap(false)
+        text:SetMaxLines(1)
+        local raw = text.xhudRaw or text:GetText()
+        text.xhudRaw = raw
+        if raw then text:SetText(OneLine(raw)) end
         text.xhudStyled = true
     elseif text.xhudStyled then
         text.xhudStyled = nil
@@ -236,6 +258,10 @@ local function StyleTitle(text)
         text:SetPoint("LEFT", name, RXP_TITLE_LEFT, 0)
         text:SetPoint("RIGHT", name, 0, 0)
         text:SetJustifyH("CENTER")
+        text:SetJustifyV("MIDDLE")
+        text:SetWordWrap(true)
+        text:SetMaxLines(0)
+        if text.xhudRaw then text:SetText(text.xhudRaw) end
     end
     styling = false
 end
@@ -250,17 +276,22 @@ local function ApplyTitle()
         local function restyle() if XpieStyle() then StyleTitle(text) end end
         hooksecurefunc(text, "SetFont", restyle)
         hooksecurefunc(text, "SetTextColor", restyle)
+        -- RXP's new text is remembered as given (for the Original style),
+        -- then shown on one line.
+        hooksecurefunc(text, "SetText", function(self, value)
+            if styling then return end
+            self.xhudRaw = value
+            if XpieStyle() then StyleTitle(self) end
+        end)
     end
     StyleTitle(text)
 end
 
 -- ---------------------------------------------------------------------------
 -- Step list top: RXP lets its title box overlap the list by 9px (its banner
--- covered the rows scrolling under it). With the title box see-through, the
--- list starts under the title instead.
+-- covered the rows scrolling under it). The list now starts below the guide
+-- name line instead.
 -- ---------------------------------------------------------------------------
-local LIST_GAP = 2
-
 local function ApplyListTop(on)
     local f = _G.RXPFrame
     local scroll, name = f.ScrollFrame, f.GuideName
@@ -272,7 +303,7 @@ local function ApplyListTop(on)
     end
     local saved = scroll.xhudTop
     if on then
-        scroll:SetPoint("TOPLEFT", name, "BOTTOMLEFT", saved[4] or 0, -LIST_GAP)
+        scroll:SetPoint("TOPLEFT", name, "BOTTOMLEFT", saved[4] or 0, -(NAME_GAP + NAME_LINE + LIST_GAP))
     else
         scroll:SetPoint(unpack(saved))
     end
@@ -626,7 +657,7 @@ function module:BuildSettings(page)
     page:Status(function()
         return C_AddOns.IsAddOnLoaded("RXPGuides") and "" or "(RestedXP Guides not loaded)"
     end)
-    page:Note("Choose RestedXP's original look, or the XpieHUD style: the native font, gold settings gear and checkboxes, and a native panel behind the guide window. The XpieHUD style selects an \"XpieHUD\" theme in RestedXP; the Original style puts your previous theme back. Disable the XpieHUD_RestedXP addon to remove this page completely.")
+    page:Note("Choose RestedXP's original look, or the XpieHUD style: the native font, gold settings gear and checkboxes, and a native panel behind the guide window with the guide name under its header bar. The XpieHUD style selects an \"XpieHUD\" theme in RestedXP; the Original style puts your previous theme back. Disable the XpieHUD_RestedXP addon to remove this page completely.")
     page:Dropdown({
         key = "style", label = "Style",
         values = function()
@@ -637,5 +668,5 @@ function module:BuildSettings(page)
         end,
     })
     page:Space(6)
-    page:PanelStyle(function() return module.db.panel end)
+    page:PanelStyle(function() return module.db.panel end, panelDefaults)
 end

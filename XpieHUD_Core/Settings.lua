@@ -254,8 +254,9 @@ end
 -- Background panel controls for a style table from XpieHUD.PANEL_DEFAULTS.
 -- The art is always Blizzard's (Quest Tracker or Tooltip look); players get
 -- the look, opacity, header/border on-off, title and padding. getStyle()
--- returns the live table (module.db.panel).
-function PageMixin:PanelStyle(getStyle)
+-- returns the live table (module.db.panel). `defaults` (optional) is what
+-- Reset Panel goes back to, for a module whose defaults differ from the core's.
+function PageMixin:PanelStyle(getStyle, defaults)
     local function field(key, extra)
         local o = {
             get = function() return getStyle()[key] end,
@@ -275,7 +276,7 @@ function PageMixin:PanelStyle(getStyle)
     self:Button("Reset Panel", function()
         local style = getStyle()
         wipe(style)
-        addon.CopyDefaults(style, addon.PANEL_DEFAULTS)
+        addon.CopyDefaults(style, defaults or addon.PANEL_DEFAULTS)
         addon:SettingsChanged()
     end)
 end
