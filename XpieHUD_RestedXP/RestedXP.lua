@@ -35,22 +35,23 @@ local MEDIA_DIR  = "Interface\\AddOns\\XpieHUD_RestedXP\\Media\\"
 -- it for anything we don't replace (Textures/DarkMode in RXPGuides).
 local RXP_ART    = "Interface/AddOns/RXPGuides/Textures/DarkMode/"
 
--- Shipping defaults (Jeremy's setup): "RestedXP" on the header bar (the
--- guide name sits under it), no background behind the guide text, 5px padding.
-local panelDefaults = CopyTable(core.PANEL_DEFAULTS)
-panelDefaults.title   = "RestedXP"
-panelDefaults.opacity = 0
-panelDefaults.padding = 5
+-- The guide window's panel is fixed: the gold header bar titled "RestedXP"
+-- (the guide name sits under it) and no background behind the step list.
+-- Only the current step boxes below the window get a background.
+local WINDOW_PANEL = {
+    look = "tracker", opacity = 0, header = true, border = false,
+    title = "RestedXP", padding = 5,
+}
 
 local module = core:RegisterModule("restedxp", {
     title = "RestedXP Guides",
     defaults = {
         -- "xpiehud": XpieHUD theme + native panel. "original": leave RXP alone.
         style = "xpiehud",
-        panel = panelDefaults,   -- deep-copied into the saved settings
-        -- Current step boxes (below the window): their own background opacity,
-        -- in the panel's look, so they stand out from the step list above.
-        stepOpacity = 10,
+        -- Current step boxes (below the window): background opacity, %, so
+        -- they stand out from the step list above (Quest Tracker look).
+        -- (3.8.x saved "panel" and "stepOpacity"; no longer used.)
+        stepBackground = 25,
         -- prevTheme: the RXP theme to put back for the Original style
     },
 })
@@ -108,14 +109,12 @@ local function BuildTheme()
 end
 
 -- RXP's other boxes (item and target buttons) look like the current step
--- boxes: black for the Quest Tracker look (its background is a black fade),
--- the tooltip colour for the Tooltip look, at the current step opacity.
+-- boxes: black (the Quest Tracker background is a black fade), at the
+-- current step opacity.
 local function UpdateThemeBackground()
     if not theme then return false end
-    local style = module.db.panel or {}
     local r, g, b = 0, 0, 0
-    if style.look == "tooltip" then r, g, b = TooltipColor() end
-    local a = (module.db.stepOpacity or 10) / 100
+    local a = (module.db.stepBackground or 25) / 100
     local bg = theme.background
     if bg[1] == r and bg[2] == g and bg[3] == b and bg[4] == a then return false end
     bg[1], bg[2], bg[3], bg[4] = r, g, b, a
@@ -212,8 +211,8 @@ end
 -- ---------------------------------------------------------------------------
 -- Guide name: on its own line just under the header bar (the bar carries the
 -- panel's title, after the gear), like the guide tab under Zygor's title.
--- Native gold font, the small size (GameFontNormalSmall) so long guide names
--- fit, left-aligned with the step text, one
+-- Native gold font at the size of the guide tab in the Zygor module
+-- (Zygor's 12pt tab text at Zygor's window scale), left-aligned with the step text, one
 -- line: RXP's two-line name ("Guide\n(1-90) Default") is joined with a
 -- space and truncated if the window is narrow. RXP sets its own font, colour
 -- and text on setup, theme changes and guide loads; those calls are
@@ -224,7 +223,31 @@ local TITLE_LEFT  = GEAR_X + GEAR_SIZE + 5    -- panel title on the header bar
 local TITLE_RIGHT = 8
 local NAME_X      = 7     -- guide name inset: Blizzard's tracker title inset
 local NAME_GAP    = 2     -- header bar to guide name
-local NAME_LINE   = 12    -- the name line's height (GameFontNormalSmall)
+-- Guide name size as it appears on screen: Zygor's guide tab text when
+-- Zygor is loaded (its font size x its window's scale), otherwise this, at
+-- the UI's scale. RXP has its own window scale, so the size is converted.
+local NAME_SIZE_FALLBACK = 10
+
+local function ZygorTabText()
+    local tabs = _G.ZGV and _G.ZGV.Tabs and _G.ZGV.Tabs.Pool
+    if not tabs then return end
+    for _, tab in pairs(tabs) do
+        if tab.Text and tab.Text.GetFont and tab.Text:GetFont() then return tab.Text end
+    end
+end
+
+local function NameFontSize(text)
+    local scale = text:GetEffectiveScale()
+    if not scale or scale <= 0 then return NAME_SIZE_FALLBACK end
+    local ref = ZygorTabText()
+    local _, refSize = ref and ref:GetFont()
+    if refSize then
+        return refSize * ref:GetEffectiveScale() / scale
+    end
+    return NAME_SIZE_FALLBACK * UIParent:GetEffectiveScale() / scale
+end
+
+local nameLine = 12   -- the name line's height, set with the font
 local LIST_GAP    = 4     -- guide name to step list
 local RXP_TITLE_LEFT, RXP_TITLE_SIZE = 29, 11   -- RXP's own (GuideWindow.lua)
 
@@ -239,7 +262,11 @@ local function StyleTitle(text)
     styling = true
     local name = _G.RXPFrame.GuideName
     if XpieStyle() then
-        text:SetFontObject(GameFontNormalSmall)
+        -- An explicit size: RXP sets one with SetFont, which a font object
+        -- (SetFontObject) doesn't override.
+        local size = NameFontSize(text)
+        text:SetFont(STANDARD_TEXT_FONT, size, "")
+        nameLine = math.ceil(size) + 2
         text:SetTextColor(NORMAL_FONT_COLOR:GetRGB())
         text:SetShadowColor(0, 0, 0, 1)
         text:SetShadowOffset(1, -1)
@@ -309,7 +336,7 @@ local function ApplyListTop(on)
     end
     local saved = scroll.xhudTop
     if on then
-        scroll:SetPoint("TOPLEFT", name, "BOTTOMLEFT", saved[4] or 0, -(NAME_GAP + NAME_LINE + LIST_GAP))
+        scroll:SetPoint("TOPLEFT", name, "BOTTOMLEFT", saved[4] or 0, -(NAME_GAP + nameLine + LIST_GAP))
     else
         scroll:SetPoint(unpack(saved))
     end
@@ -541,10 +568,44 @@ end
 local stepPanels = {}
 
 local function StepPanelStyle()
-    local style = CopyTable(module.db.panel)
+    local style = CopyTable(WINDOW_PANEL)
     style.header, style.title = false, ""
-    style.opacity = module.db.stepOpacity or 10
+    style.opacity = module.db.stepBackground or 25
     return style
+end
+
+-- RXP's title tab ("Step 3") sits 5px above the step box (GuideWindow.lua:
+-- number frame at TOPLEFT 7, 5). The panel goes behind a holder that reaches
+-- above the tab, so the background frames the title with room to spare.
+local STEP_TAB_RISE = 5   -- RXP's
+local STEP_TOP_PAD  = 4   -- extra room above the tab, inside the background
+
+local function StepPanelHolder(stepframe)
+    if stepframe.xhudHolder then return stepframe.xhudHolder end
+    local holder = CreateFrame("Frame", nil, stepframe)
+    holder:SetPoint("TOPLEFT", stepframe, "TOPLEFT", 0, STEP_TAB_RISE + STEP_TOP_PAD)
+    holder:SetPoint("BOTTOMRIGHT", stepframe, "BOTTOMRIGHT")
+    holder:EnableMouse(false)
+    stepframe.xhudHolder = holder
+    return holder
+end
+
+-- With that taller background, the step boxes move away from the guide
+-- window so the two never touch: RXP anchors its step area just below the
+-- window (or just above the title, near the top of the screen); post-hooked
+-- and pushed out by the room the background needs.
+local STEP_GAP = STEP_TAB_RISE + STEP_TOP_PAD + WINDOW_PANEL.padding + 4
+
+local function SpaceStepArea(frame, point, rel, relPoint, x, y)
+    if frame.xhudSpacing or type(point) ~= "string" then return end
+    if type(rel) ~= "table" then return end   -- only RXP's relative anchors
+    frame.xhudSpacing = true
+    local shift = 0
+    if XpieStyle() then
+        shift = point:find("^TOP") and -STEP_GAP or (point:find("^BOTTOM") and STEP_GAP or 0)
+    end
+    frame:SetPoint(point, rel, relPoint, x or 0, (y or 0) + shift)
+    frame.xhudSpacing = false
 end
 
 local function StyleStepBox(stepframe, on, style)
@@ -557,7 +618,7 @@ local function StyleStepBox(stepframe, on, style)
     local panel = stepPanels[stepframe]
     if on and not panel then
         panel = core:CreatePanel()
-        panel:Attach(stepframe)
+        panel:Attach(StepPanelHolder(stepframe))
         stepPanels[stepframe] = panel
     end
     if panel then
@@ -612,6 +673,7 @@ local function HookRXP(rxp)
     end
     if frame.UpdateScrollBar then hooksecurefunc(frame, "UpdateScrollBar", StyleScrollBar) end
     if rxp.SetStep then hooksecurefunc(rxp, "SetStep", StyleActiveSteps) end
+    if frame.CurrentStepFrame then hooksecurefunc(frame.CurrentStepFrame, "SetPoint", SpaceStepArea) end
 end
 
 function module:Apply()
@@ -627,7 +689,7 @@ function module:Apply()
     self.panel:Attach(frame)
     if frame.GuideName then self.panel:SetHeaderAnchor(frame.GuideName) end
     self.panel:SetTitleInsets(TITLE_LEFT, TITLE_RIGHT)
-    self.panel:SetStyle(self.db.panel)
+    self.panel:SetStyle(WINDOW_PANEL)
     self.panel:SetActive(on)
 
     ApplyChrome(on)
@@ -637,6 +699,8 @@ function module:Apply()
     ApplyGear(self.panel)
     if on then StyleScrollBar() else RestoreScrollBar() end
     if not rethemed then StyleActiveSteps() end
+    -- Re-anchor the step area so its spacing follows the style.
+    if frame.SetStepFrameAnchor then frame.SetStepFrameAnchor() end
     -- Leaving the XpieHUD style: RXP re-textures the checkboxes on its next step update.
     if self.wasOn and not on and rxp.ReloadStep and rxp.currentGuide then rxp.ReloadStep() end
     self.wasOn = on
@@ -644,7 +708,7 @@ end
 
 -- RXP sets its window up on its own load; its guide loads just after login.
 function module:OnLogin()
-    for _, delay in ipairs({ 0, 1, 3 }) do
+    for _, delay in ipairs({ 0, 1, 3, 6, 12 }) do   -- late ones: Zygor's tabs (guide name size) appear after its threaded startup
         C_Timer.After(delay, function()
             if core.ready then module:Apply() end
         end)
@@ -665,7 +729,7 @@ function module:BuildSettings(page)
     page:Status(function()
         return C_AddOns.IsAddOnLoaded("RXPGuides") and "" or "(RestedXP Guides not loaded)"
     end)
-    page:Note("Choose RestedXP's original look, or the XpieHUD style: the native font, gold settings gear and checkboxes, and a native panel behind the guide window with the guide name under its header bar. The XpieHUD style selects an \"XpieHUD\" theme in RestedXP; the Original style puts your previous theme back. Disable the XpieHUD_RestedXP addon to remove this page completely.")
+    page:Note("Choose RestedXP's original look, or the XpieHUD style: the native font, gold settings gear and checkboxes, a gold header bar on the guide window with the guide name under it, and a native background behind the current step. The XpieHUD style selects an \"XpieHUD\" theme in RestedXP; the Original style puts your previous theme back. Disable the XpieHUD_RestedXP addon to remove this page completely.")
     page:Dropdown({
         key = "style", label = "Style",
         values = function()
@@ -676,8 +740,5 @@ function module:BuildSettings(page)
         end,
     })
     page:Space(6)
-    page:PanelStyle(function() return module.db.panel end, panelDefaults)
-    page:Space(6)
-    page:Header("Current Step")
-    page:Slider({ key = "stepOpacity", label = "Current Step Background", description = "Background behind the current step boxes below the guide window (and RestedXP's item and target buttons), in the panel's look. Set it apart from the step list above.", min = 0, max = 100, step = 5, format = "%d%%" })
+    page:Slider({ key = "stepBackground", label = "Current Step Background", description = "Background behind the current step boxes below the guide window (and RestedXP's item and target buttons), so they stand out from the step list. The step list itself has no background.", min = 0, max = 100, step = 5, format = "%d%%" })
 end

@@ -2,7 +2,7 @@
 ## Title: XpieHUD - RestedXP Guides
 ## Notes: XpieHUD extension: RestedXP Guides in the XpieHUD style (native font and controls, native background panel) or its original look.
 ## Author: Jeremy / Xpie
-## Version: 3.8.3
+## Version: 3.8.4
 ## Dependencies: XpieHUD_Core
 ## OptionalDeps: RXPGuides
 ## Group: XpieHUD_Core
