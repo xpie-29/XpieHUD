@@ -590,35 +590,27 @@ local function StyleCheckbox(button)
     end
 end
 
--- Each active step box gets the guide window's panel body (no header bar,
--- no title) behind it instead of RXP's flat colour, so the steps read as
--- part of the same HUD, at their own opacity (Current Step Background). RXP's own box and its title tab go transparent.
-local stepPanels = {}
-
-local STEP_PADDING = WINDOW_PANEL.padding - 2   -- a touch tighter than the window's
-
-local function StepPanelStyle()
-    local style = CopyTable(WINDOW_PANEL)
-    style.header, style.title = false, ""
-    style.opacity = module.db.stepBackground or 25
-    style.padding = STEP_PADDING
-    return style
-end
-
+-- Each active step box gets a square background like the chat window's
+-- (FloatingChatFrame: the plain ChatFrameBackground texture tinted black,
+-- 25% by default, like DEFAULT_CHATFRAME_ALPHA) instead of RXP's flat colour,
+-- at its own opacity (Current Step Background). RXP's own box and its title
+-- tab go transparent.
+local CHAT_BG = "Interface/ChatFrame/ChatFrameBackground"
+local STEP_PADDING  = 3   -- around the step box
 -- RXP's title tab ("Step 3") sits 5px above the step box (GuideWindow.lua:
--- number frame at TOPLEFT 7, 5). The panel goes behind a holder that reaches
--- above the tab, so the background frames the title with room to spare.
+-- number frame at TOPLEFT 7, 5); the background reaches above it, so it
+-- frames the title with room to spare.
 local STEP_TAB_RISE = 5   -- RXP's
 local STEP_TOP_PAD  = 4   -- extra room above the tab, inside the background
 
-local function StepPanelHolder(stepframe)
-    if stepframe.xhudHolder then return stepframe.xhudHolder end
-    local holder = CreateFrame("Frame", nil, stepframe)
-    holder:SetPoint("TOPLEFT", stepframe, "TOPLEFT", 0, STEP_TAB_RISE + STEP_TOP_PAD)
-    holder:SetPoint("BOTTOMRIGHT", stepframe, "BOTTOMRIGHT")
-    holder:EnableMouse(false)
-    stepframe.xhudHolder = holder
-    return holder
+local function StepBackground(stepframe)
+    if stepframe.xhudBg then return stepframe.xhudBg end
+    local bg = stepframe:CreateTexture(nil, "BACKGROUND", nil, -8)
+    bg:SetTexture(CHAT_BG)
+    bg:SetPoint("TOPLEFT", stepframe, "TOPLEFT", -STEP_PADDING, STEP_TAB_RISE + STEP_TOP_PAD + STEP_PADDING)
+    bg:SetPoint("BOTTOMRIGHT", stepframe, "BOTTOMRIGHT", STEP_PADDING, -STEP_PADDING)
+    stepframe.xhudBg = bg
+    return bg
 end
 
 -- With that taller background, the step boxes move away from the guide
@@ -639,22 +631,17 @@ local function SpaceStepArea(frame, point, rel, relPoint, x, y)
     frame.xhudSpacing = false
 end
 
-local function StyleStepBox(stepframe, on, style)
+local function StyleStepBox(stepframe, on, alpha)
     HookChrome(stepframe)
     HookChrome(stepframe.number)
     if on then
         ClearBackdrop(stepframe)
         ClearBackdrop(stepframe.number)
     end
-    local panel = stepPanels[stepframe]
-    if on and not panel then
-        panel = core:CreatePanel()
-        panel:Attach(StepPanelHolder(stepframe))
-        stepPanels[stepframe] = panel
-    end
-    if panel then
-        panel:SetStyle(style)
-        panel:SetActive(on)
+    local bg = (on or stepframe.xhudBg) and StepBackground(stepframe)
+    if bg then
+        bg:SetVertexColor(0, 0, 0, alpha)
+        bg:SetShown(on)
     end
 end
 
@@ -664,9 +651,9 @@ local function StyleActiveSteps()
     if not pool then return end
     local on = XpieStyle()
     local checkboxes = C_Texture.GetAtlasInfo("checkbox-minimal") ~= nil
-    local style = StepPanelStyle()
+    local alpha = (module.db.stepBackground or 25) / 100
     for _, stepframe in pairs(pool) do
-        StyleStepBox(stepframe, on, style)
+        StyleStepBox(stepframe, on, alpha)
         if checkboxes then
             for _, element in pairs(stepframe.elements or {}) do
                 if element.button then StyleCheckbox(element.button) end

@@ -61,7 +61,7 @@ Choose a **Style**:
 Choose a **Style**:
 - **XpieHUD** (default), for RestedXP's guide window:
   - An **"XpieHUD" RestedXP theme** is registered and selected (it also appears in RestedXP's own theme list): Blizzard's native UI font, no RestedXP borders, transparent step rows with a faint gold hover, and Blizzard's dark tooltip colour behind RestedXP's other boxes (active steps, item and target buttons).
-  - The guide window gets the **gold header bar** titled "RestedXP", with the current guide's name on its own line just below it in Blizzard's gold font (the size of Zygor's guide tab). The step list has no background. The current step boxes below the window get a native background that frames their "Step" title: **Current Step Background**, default 25%.
+  - The guide window gets the **gold header bar** titled "RestedXP", with the current guide's name on its own line just below it in Blizzard's gold font (the size of Zygor's guide tab). The step list has no background. The current step boxes below the window get a square background like the chat window's that frames their "Step" title: **Current Step Background**, default 25%.
   - RestedXP's cog becomes Blizzard's **gold settings gear** at the left of the header bar (same menu). The RestedXP logo, class icon and banners are hidden.
   - Native **minimal scroll bar** and **settings checkboxes** on the active steps; step titles ("Step 3") in Blizzard's gold.
 - **Original**: puts your previous RestedXP theme back and leaves RestedXP alone. RestedXP's beta "V2" window isn't styled yet.
@@ -116,6 +116,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.8.6**: RestedXP: current step background is square, like the chat window's (ChatFrameBackground tinted black).
 - **3.8.5**: RestedXP: scroll bar drawn as its own textures at Blizzard's sizes in the UI scale (the old scroll button template cropped and enlarged the arrows); current step background 2px tighter on every side.
 - **3.8.4**: RestedXP: guide name at the Zygor guide tab's size; current step background frames the "Step" title with room above it, and the step area sits further below the window; the guide window panel is fixed (header bar titled "RestedXP", no background) and its settings removed; Current Step Background takes their place, default 25%.
 - **3.8.3**: RestedXP: smaller guide name font; scroll bar end caps at their native size (no longer clipped); resize grip invisible (still drags); new Current Step Background setting (default 10%) for the step boxes below the window.
