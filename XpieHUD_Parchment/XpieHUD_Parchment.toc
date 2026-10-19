@@ -1,0 +1,11 @@
+## Interface: 120105
+## Title: XpieHUD - Quest Parchment
+## Notes: XpieHUD extension: the quest, gossip and greeting windows as a floating native parchment with the NPC's 3D portrait. Not compatible with DialogueUI, Immersion or any other addon that replaces or restyles the quest windows.
+## Author: Jeremy / Xpie
+## Version: 3.10.0
+## Dependencies: XpieHUD_Core
+## Group: XpieHUD_Core
+## IconTexture: Interface\AddOns\XpieHUD_Core\Media\icon
+## Category-enUS: User Interface
+
+Parchment.lua

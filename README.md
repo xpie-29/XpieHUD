@@ -19,6 +19,7 @@ XpieHUD is one **core** addon plus optional **extensions**. Each extension is a 
 | **XpieHUD - Baganator** (`XpieHUD_Baganator/`) | Optional extension, requires XpieHUD Core and Baganator. Gives Baganator's bag, bank and guild bank windows the look of Blizzard's Combined Backpack. |
 | **XpieHUD - RestedXP Guides** (`XpieHUD_RestedXP/`) | Optional extension, requires XpieHUD Core and RestedXP Guides. Gives RestedXP's guide window the XpieHUD style. |
 | **XpieHUD - MinimapButtonButton** (`XpieHUD_MinimapButtonButton/`) | Optional extension, requires XpieHUD Core (and MinimapButtonButton for the button styling). Makes MinimapButtonButton part of the micro menu and moves the queue status eye off it. |
+| **XpieHUD - Quest Parchment** (`XpieHUD_Parchment/`) | Optional extension, requires XpieHUD Core. A floating-parchment look for the quest, gossip and greeting windows (in development). Not compatible with DialogueUI or Immersion. |
 
 ### What XpieHUD Core provides
 
@@ -40,7 +41,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 - **Tooltips at Cursor**: while talking, tooltips that normally sit in the screen corner appear at the mouse (can be turned off).
 - **Position and Size**: drag a window's title bar to move it. A size slider (50–150%) sits in settings. Both are saved and re-applied every time the window opens.
 - **Keyboard Shortcuts** (out of combat):
-  - **1–9** pick gossip options, quests in an NPC's list, and reward choices.
+  - **1–9** pick gossip options, quests in an NPC's list, and reward choices; **0** picks the 10th and **Shift+1–9** the 11th to 19th (city guards list about 17). A number key that picks nothing passes through, so Shift+number still pages the action bar.
   - **Space** accepts, continues, completes, or turns a book's page.
   - **Esc** closes the window, as it always has.
   - All other keys pass through, so movement and camera still work. PvP quests and quests that cost gold still need a click.
@@ -92,6 +93,12 @@ Choose a **Style**:
 
 **Queue Status** (works with or without MinimapButtonButton): the Looking for Group eye moves off the micro menu to its own spot (default: the minimap's lower left), with its own **Eye Size** (replaces Edit Mode's Eye Size while separated). Tick **Unlock Eye** to show a handle and drag it; **Reset Eye Position** or `/xhud queuereset` puts it back. Untick **Separate From Micro Menu** to return it beside the micro menu. The eye is only re-anchored and scaled, never hidden or re-parented.
 
+### Quest Parchment (XpieHUD - Quest Parchment) — in development
+An optional look for the quest, gossip and greeting windows: Blizzard's own quest parchment floating free of its frame with a soft shadow along its torn edge, the NPC's 3D portrait with the text wrapping beside it, native quest icons and markers (campaign, warband completed, low level and the rest), a reward grid, a minimal scroll bar and tan buttons. Quest text appears instantly, so voice-over addons such as AI Quest Voices stay in sync. Design and build phases: [`docs/quest-parchment-plan.md`](docs/quest-parchment-plan.md).
+- **Style**: **Parchment** (default) or **Blizzard** (XpieHUD Core's quest window, exactly as without the extension). Also **Shadow Opacity** (default 70%) and **Portrait Zoom** (default 80%).
+- **Not compatible with DialogueUI, Immersion or any other addon that replaces or restyles the quest windows.** If one of them is loaded, Quest Parchment stays off and says so once in chat.
+- 3.10.0 is the shell only (settings, the compatibility check and the hand-off from Core); the windows don't change yet.
+
 ---
 
 ## Slash Commands
@@ -131,6 +138,7 @@ Choose a **Style**:
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.10.0**: New extension XpieHUD - Quest Parchment (shell: settings, compatibility check with DialogueUI / Immersion / Storyline, hand-off from Core; no visual changes yet). Core: 0 picks the 10th choice and Shift+1–9 the 11th to 19th; badges up to 19; quest-look hand-off API (`XpieHUD:SetQuestLook`).
 - **3.9.1**: MinimapButtonButton: its logo is replaced by a chest icon painted in the micro menu style (Up / Mouseover / Down / Disabled cells like Blizzard's 2x micro sheet), swapped per state the way Blizzard's micro buttons do.
 - **3.9.0**: New extension XpieHUD - MinimapButtonButton: its button as a native micro menu button attached left of the micro menu, drawer buttons in micro menu style; the queue status eye separated from the micro menu with its own position and size.
 - **3.8.7**: RestedXP: the gold waypoint arrow from the Zygor extension (`XpieHUD_RestedXP/Media/arrow.tga`, cut from the Zygor sheet as one upright frame that RestedXP turns), at the Zygor arrow's size.

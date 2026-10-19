@@ -24,6 +24,7 @@ local BADGE_Y        = -1.5  -- vertical nudge to line option badges up with the
 local QUEST_BADGE_X  = -1    -- quest-icon number: offset from the icon's bottom-left corner
 local QUEST_BADGE_Y  = -1
 local MIN_SCALE, MAX_SCALE = 50, 150
+local MAX_CHOICES    = 19    -- 1-9, 0 = 10, Shift+1..9 = 11-19
 
 local dialogFrames = {}
 local initialized = false
@@ -366,7 +367,20 @@ local function GetRewardChoiceButtons()
     return list
 end
 
+-- An extension that restyles the quest windows (XpieHUD_Parchment) registers
+-- here with addon:SetQuestLook(look). Core asks it first for number keys, Space
+-- and badges; a nil answer means "not mine", and Core does what it always did.
+local function Look()
+    local look = addon.questLook
+    if look and look:IsActive() then return look end
+end
+
 local function HandleNumber(number)
+    local look = Look()
+    if look and look.SelectNumber then
+        local handled = look:SelectNumber(number)
+        if handled ~= nil then return handled end
+    end
     if GossipFrame and GossipFrame:IsShown() then
         return SelectGossip(number)
     end
@@ -381,6 +395,11 @@ local function HandleNumber(number)
 end
 
 local function HandleSpace()
+    local look = Look()
+    if look and look.HandleSpace then
+        local handled = look:HandleSpace()
+        if handled ~= nil then return handled end
+    end
     if QuestFrame and QuestFrame:IsShown() then
         if QuestFrameDetailPanel:IsShown() then
             -- PvP quests open a StaticPopup; let the player click those so we
@@ -401,13 +420,26 @@ local function HandleSpace()
     return false
 end
 
+-- 1-9 pick choices 1-9, 0 picks 10, Shift+1..9 pick 11-19 (city guards list
+-- about 15-17 destinations). A key that picks nothing passes through, so
+-- Shift+number still pages the action bar when there's no 11th choice.
+local function KeyToNumber(key)
+    local digit = tonumber(key) or tonumber(key:match("^NUMPAD(%d)$") or "")
+    if not digit then return nil end
+    if IsShiftKeyDown() then
+        return digit >= 1 and 10 + digit or nil
+    end
+    return digit == 0 and 10 or digit
+end
+
 local function HandleKey(key)
-    if IsModifierKeyDown() then return false end
+    if IsControlKeyDown() or IsAltKeyDown() then return false end
     if key == "SPACE" then
+        if IsShiftKeyDown() then return false end
         return HandleSpace()
     end
-    local number = tonumber(key) or tonumber(key:match("^NUMPAD(%d)$") or "")
-    if number and number >= 1 and number <= 9 then
+    local number = KeyToNumber(key)
+    if number then
         return HandleNumber(number)
     end
     return false   -- Esc and everything else: Blizzard handles it
@@ -540,6 +572,12 @@ local function RefreshBadges()
 
     local show = IsEnabled() and XpieHUDDB.questDialogKeys and XpieHUDDB.questDialogBadges
         and not (inCombat or InCombatLockdown())
+    -- A quest look that draws its own badges and hints says so by returning true.
+    local look = Look()
+    if look and look.RefreshBadges and look:RefreshBadges(show) then
+        RefreshKeyHints(false)
+        return
+    end
     RefreshKeyHints(show)
     if not show then return end
 
@@ -547,7 +585,7 @@ local function RefreshBadges()
         local scrollBox = GetGossipScrollBox()
         if scrollBox then
             scrollBox:ForEachFrame(function(frame, elementData)
-                if elementData and elementData.index and elementData.index <= 9 then
+                if elementData and elementData.index and elementData.index <= MAX_CHOICES then
                     local isQuest = elementData.buttonType == GOSSIP_BUTTON_TYPE_AVAILABLE_QUEST
                         or elementData.buttonType == GOSSIP_BUTTON_TYPE_ACTIVE_QUEST
                     SetBadge(frame, elementData.index, isQuest and "quest" or "option")
@@ -559,12 +597,12 @@ local function RefreshBadges()
     if QuestFrame and QuestFrame:IsShown() then
         if QuestFrameGreetingPanel:IsShown() then
             for number, button in ipairs(GetGreetingButtons()) do
-                if number > 9 then break end
+                if number > MAX_CHOICES then break end
                 SetBadge(button, number, "quest")   -- greeting lists are all quests
             end
         elseif QuestFrameRewardPanel:IsShown() then
             for number, button in ipairs(GetRewardChoiceButtons()) do
-                if number > 9 then break end
+                if number > MAX_CHOICES then break end
                 SetBadge(button, number, "reward")
             end
         end
@@ -612,6 +650,8 @@ local function OnDialogShow(frame)
     restoreToken = restoreToken + 1
     ApplyScale(frame)
     ApplyPosition(frame)
+    local look = Look()
+    if look and look.OnDialogShow then look:OnDialogShow(frame) end
     UpdateState()
     RefreshBadges()
     if addon.questScanArmed then
@@ -695,6 +735,23 @@ function addon:InitQuestDialog()
 
     initialized = true
     self:ApplyQuestDialog()
+end
+
+-- Quest look hand-off (see Look() above). look is a table with:
+--   look:IsActive()          -> true while it is restyling the quest windows
+--   look:SelectNumber(n)     -> true/false if it handled choice n, nil = not mine
+--   look:HandleSpace()       -> same contract for Space
+--   look:RefreshBadges(show) -> true if it drew badges + key hints itself
+--   look:OnDialogShow(frame) -> optional, after Core positions the frame
+-- Pass nil to unregister.
+function addon:SetQuestLook(look)
+    self.questLook = look
+    if initialized then self:ApplyQuestDialog() end
+end
+
+-- For a quest look whose lists change outside Core's hooks.
+function addon:RefreshQuestBadges()
+    if initialized then RefreshBadges() end
 end
 
 -- Called at the end of ApplyAll so settings changes take effect immediately.

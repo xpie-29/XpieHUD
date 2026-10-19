@@ -104,9 +104,9 @@ capture stays out of combat as today.
 
 ## Phases
 
-0. In-game test (done): masks (RLE, raw, NPOT all load), shadow, portrait,
+0. In-game test (done, 2026-10-19): masks (RLE, raw, NPOT all load), shadow, portrait,
    scroll bar, arrows, tan buttons.
-1. Module shell: addon folder, RegisterModule, settings page (Style, Shadow
+1. Module shell (done, 3.10.0): addon folder, RegisterModule, settings page (Style, Shadow
    opacity, Portrait zoom), incompatibility check, Core hand-off hook.
 2. Parchment frame: masks + shadow for plain/Horde/Alliance first, theme
    switching, chrome by alpha, fixed size, pinned buttons.
