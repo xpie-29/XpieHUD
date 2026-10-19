@@ -145,6 +145,7 @@ local function CreateList(frame)
         list.bar:SetPoint("TOPLEFT", sf, "TOPRIGHT", 0, 0)
         list.bar:SetPoint("BOTTOMLEFT", sf, "BOTTOMRIGHT", 0, 0)
         ScrollUtil.InitScrollFrameWithScrollBar(sf, list.bar)
+        R.TintScrollBar(list.bar, true)
     end
 
     -- "More below": the chat frame's ScrollToBottomButton (Shared.lua)

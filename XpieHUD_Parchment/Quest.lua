@@ -54,6 +54,47 @@ local rules = {}          -- [scroll frame] = top divider
 local fontSaved = {}      -- [fontString] = { font object, r, g, b } (Blizzard's)
 local qfonts = {}
 
+-- ---------------------------------------------------------------------------
+-- Coins (QuestInfoMoneyFrame, Blizzard's MoneyFrameTemplate: 19px icons)
+-- no taller than the reward text beside them. Blizzard lays the coins out
+-- again on every MoneyFrame_Update; a post-hook redoes ours from its result.
+-- ---------------------------------------------------------------------------
+local COINS = { "GoldButton", "SilverButton", "CopperButton" }
+local coinSize            -- our icon size (native units) while dressed, else nil
+local coinBase = {}       -- [money frame] = { width, icon } as Blizzard left them
+
+local function LayCoins(frame, size)
+    local base = coinBase[frame]
+    if not base then return end
+    local shown = 0
+    for i, key in ipairs(COINS) do
+        local button = frame[key]
+        local tex = button and button.GetNormalTexture and button:GetNormalTexture()
+        if tex and button:IsShown() then          -- (colour-blind mode has no icons)
+            shown = shown + 1
+            tex:SetSize(size, size)
+            if i < 3 and button.Text then button.Text:SetPoint("RIGHT", -size, MONEY_TEXT_VADJUST or 0) end
+            button:SetWidth(button:GetTextWidth() + size)
+        end
+    end
+    frame:SetWidth(base.width - shown * (base.icon - size))
+end
+
+local function SizeCoins(frame)
+    if frame ~= QuestInfoMoneyFrame then return end
+    coinBase[frame] = {
+        width = frame:GetWidth(),
+        icon = (MONEY_ICON_WIDTH or 19) * (frame.userScaledTextScale or 1),
+    }
+    if coinSize then LayCoins(frame, coinSize) end
+end
+
+local function RestoreCoins()
+    if not coinSize then return end
+    coinSize = nil
+    for frame, base in pairs(coinBase) do LayCoins(frame, base.icon) end
+end
+
 local function UpdateQuestFonts(h, scale)
     local file = (QuestFont:GetFont())
     for key, size in pairs({ body = BODY_SIZE, reward = REWARD_SIZE }) do
@@ -114,6 +155,7 @@ local function RestoreShared()
     for fs in pairs(hidden) do ShowText(fs) end
     if QuestInfoRewardsFrame then QuestInfoRewardsFrame:SetScale(1) end
     RestoreFonts()
+    RestoreCoins()
     for name, block in pairs(blocks) do
         if pages and pages[name] and pages[name].shared then block:Hide() end
     end
@@ -172,6 +214,7 @@ function R:LayoutQuestPage(frame, state)
     if bar and not barState[bar] then
         barState[bar] = { hide = bar.hideIfUnscrollable or false, scale = bar:GetScale() }
         if bar.SetHideIfUnscrollable then bar:SetHideIfUnscrollable(true) end
+        R.TintScrollBar(bar, true)
     end
     -- ...at its native size, not the content's
     if bar then bar:SetScale(1 / scale) end
@@ -188,6 +231,12 @@ function R:LayoutQuestPage(frame, state)
             SetFont(rewards.ItemReceiveText, qfonts.reward)
             SetFont(rewards.ItemChooseText, qfonts.reward)
             SetFont(rewards.PlayerTitleText, qfonts.reward)
+        end
+        -- coins no taller than that text
+        local size = select(2, qfonts.reward:GetFont())
+        if size and size ~= coinSize then
+            coinSize = size
+            if QuestInfoMoneyFrame then LayCoins(QuestInfoMoneyFrame, size) end
         end
     end
     if name == "progress" and QuestProgressRequiredItemsText then QuestProgressRequiredItemsText:SetWidth(textW) end
@@ -257,6 +306,7 @@ function R:UndressQuestPage(frame, state)
     for bar, s in pairs(barState) do
         if bar.SetHideIfUnscrollable then bar:SetHideIfUnscrollable(s.hide) end
         bar:SetScale(s.scale)
+        R.TintScrollBar(bar, false)
     end
     wipe(barState)
     for _, rule in pairs(rules) do rule.enabled = false; rule.Update() end
@@ -270,6 +320,12 @@ local hooked = false
 function R:HookQuestInfo()
     if hooked or not QuestInfo_Display then return end
     hooked = true
+    if MoneyFrame_Update then
+        hooksecurefunc("MoneyFrame_Update", function(frame)
+            if type(frame) == "string" then frame = _G[frame] end
+            SizeCoins(frame)
+        end)
+    end
     hooksecurefunc("QuestInfo_Display", function(template, parentFrame)
         local ours = parentFrame == QuestDetailScrollChildFrame or parentFrame == QuestRewardScrollChildFrame
         if ours and module.look:IsActive() then

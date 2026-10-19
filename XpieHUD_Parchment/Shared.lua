@@ -222,6 +222,28 @@ function R.AttachTopRule(sf, parent)
     return rule
 end
 
+-- Blizzard's silver minimal scroll bar in the parchment's tan and brown:
+-- every texture desaturated and tinted (the light thumb and arrows come out
+-- tan, the dark track brown). on = false puts the silver back.
+local BAR_TINT = { 0.80, 0.60, 0.36 }
+local function TintTextures(object, on, depth)
+    if not object or depth > 3 then return end
+    if object.GetRegions then
+        for _, region in ipairs({ object:GetRegions() }) do
+            if region.IsObjectType and region:IsObjectType("Texture") then
+                region:SetDesaturated(on)
+                if on then region:SetVertexColor(BAR_TINT[1], BAR_TINT[2], BAR_TINT[3]) else region:SetVertexColor(1, 1, 1) end
+            end
+        end
+    end
+    if object.GetChildren then
+        for _, child in ipairs({ object:GetChildren() }) do TintTextures(child, on, depth + 1) end
+    end
+end
+function R.TintScrollBar(bar, on)
+    TintTextures(bar, on and true or false, 0)
+end
+
 function R.AttachMoreArrow(sf, parent)
     local more = CreateFrame("Button", nil, parent)
     more:SetSize(17, 15)
@@ -237,6 +259,7 @@ function R.AttachMoreArrow(sf, parent)
     local fadeIn = anim:CreateAnimation("Alpha"); fadeIn:SetOrder(1); fadeIn:SetDuration(0.1); fadeIn:SetFromAlpha(0); fadeIn:SetToAlpha(1)
     local fadeOut = anim:CreateAnimation("Alpha"); fadeOut:SetOrder(2); fadeOut:SetDuration(0.1); fadeOut:SetFromAlpha(1); fadeOut:SetToAlpha(0); fadeOut:SetEndDelay(0.8)
     more:SetScript("OnClick", function() sf:SetVerticalScroll(sf:GetVerticalScrollRange()) end)
+    R.TintScrollBar(more, true)
 
     local function Update()
         local range = sf:GetVerticalScrollRange()
