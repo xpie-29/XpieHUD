@@ -349,7 +349,7 @@ function R:LayoutLists(frame, state)
     list.more:ClearAllPoints()
     list.more:SetPoint("TOP", list.sf, "BOTTOMRIGHT", c.w * BAR_GAP + BAR_W / 2, -2)
     list.rule:ClearAllPoints()
-    list.rule:SetPoint("BOTTOMLEFT", list.sf, "TOPLEFT", 0, 4)
+    list.rule:SetPoint("BOTTOMLEFT", list.sf, "TOPLEFT", 0, 3)
     list.rule:SetSize(list.sf:GetWidth(), R.RULE_HEIGHT)
     list.sf:Show()
 

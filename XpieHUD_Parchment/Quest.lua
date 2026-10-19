@@ -290,7 +290,7 @@ function R:LayoutQuestPage(frame, state)
         rules[sf] = rule
     end
     rule:ClearAllPoints()
-    rule:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", c.left, -c.top + 4)
+    rule:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", c.left, -c.top + 3)
     rule:SetSize(cw - BAR_FRAME, R.RULE_HEIGHT)
     rule.enabled = true
     rule.Update()
