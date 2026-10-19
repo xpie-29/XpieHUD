@@ -35,6 +35,8 @@ local BADGE_RING = { 0.82, 0.66, 0.24 }
 local ROUND_MASK = "Interface\\CharacterFrame\\TempPortraitAlphaMask"
 local HIGHLIGHT  = "Interface\\QuestFrame\\UI-QuestTitleHighlight"
 local MAX_CHOICES = 19
+local PORTRAIT  = 138 / 600    -- share of the parchment's width (as on the quest pages)
+local TEXT_GAP  = 16 / 600
 
 -- ---------------------------------------------------------------------------
 -- Data
@@ -60,7 +62,7 @@ end
 local function GossipData()
     local panel = GossipFrame.GreetingPanel
     local provider = panel and panel.ScrollBox and panel.ScrollBox:GetDataProvider()
-    local data = { text = C_GossipInfo.GetText() or "", entries = {} }
+    local data = { text = C_GossipInfo.GetText() or "", entries = {}, unit = "npc" }
     if not provider then return data end
     for _, e in provider:Enumerate() do
         local info = e.info
@@ -86,7 +88,7 @@ local function GossipData()
 end
 
 local function GreetingData()
-    local data = { text = GetGreetingText() or "", entries = {} }
+    local data = { text = GetGreetingText() or "", entries = {}, unit = "questnpc" }
     local numActive, numAvailable = GetNumActiveQuests(), GetNumAvailableQuests()
     local index = 0
     if numActive > 0 then
@@ -133,10 +135,9 @@ local function CreateList(frame)
     sf:EnableMouseWheel(true)
     list.sf, list.child = sf, child
 
-    list.greeting = child:CreateFontString(nil, "OVERLAY")
-    list.greeting:SetJustifyH("LEFT")
-    list.greeting:SetJustifyV("TOP")
-    list.greeting:SetPoint("TOPLEFT")
+    -- the NPC's portrait with the greeting text wrapping beside it (Shared.lua)
+    list.block = R.NewTextBlock(child)
+    list.block:SetPoint("TOPLEFT")
 
     -- Blizzard's MinimalScrollBar; shown only when the list overflows
     if ScrollUtil and ScrollUtil.InitScrollFrameWithScrollBar then
@@ -146,34 +147,13 @@ local function CreateList(frame)
         ScrollUtil.InitScrollFrameWithScrollBar(sf, list.bar)
     end
 
-    -- "More below": the chat frame's ScrollToBottomButton art and flash
-    local more = CreateFrame("Button", nil, frame)
-    more:SetSize(17, 15)
-    more:SetNormalAtlas("minimal-scrollbar-arrow-returntobottom")
-    more:SetPushedAtlas("minimal-scrollbar-arrow-returntobottom-down")
-    more:SetHighlightAtlas("minimal-scrollbar-arrow-returntobottom-over")
-    local flash = more:CreateTexture(nil, "OVERLAY")
-    flash:SetAtlas("minimal-scrollbar-arrow-returntobottom")
-    flash:SetAllPoints()
-    flash:SetBlendMode("ADD")
-    local anim = flash:CreateAnimationGroup()
-    anim:SetLooping("REPEAT")
-    local fadeIn = anim:CreateAnimation("Alpha"); fadeIn:SetOrder(1); fadeIn:SetDuration(0.1); fadeIn:SetFromAlpha(0); fadeIn:SetToAlpha(1)
-    local fadeOut = anim:CreateAnimation("Alpha"); fadeOut:SetOrder(2); fadeOut:SetDuration(0.1); fadeOut:SetFromAlpha(1); fadeOut:SetToAlpha(0); fadeOut:SetEndDelay(0.8)
-    more:SetScript("OnClick", function() sf:SetVerticalScroll(sf:GetVerticalScrollRange()) end)
-    list.more, list.moreAnim = more, anim
+    -- "More below": the chat frame's ScrollToBottomButton (Shared.lua)
+    local more = R.AttachMoreArrow(sf, frame)
+    list.more = more
 
     local function UpdateScroll()
-        local range = sf:GetVerticalScrollRange()
-        local overflow = range > 0.5
-        if list.bar then list.bar:SetShown(overflow and sf:IsShown()) end
-        local atBottom = sf:GetVerticalScroll() >= range - 1
-        more:SetShown(overflow and not atBottom and sf:IsShown())
-        if more:IsShown() then
-            if not anim:IsPlaying() then anim:Play() end
-        else
-            anim:Stop()
-        end
+        if list.bar then list.bar:SetShown(sf:GetVerticalScrollRange() > 0.5 and sf:IsShown()) end
+        more.Update()
     end
     if not sf:GetScript("OnMouseWheel") then
         sf:SetScript("OnMouseWheel", function(self, delta)
@@ -275,11 +255,12 @@ local function Fill(list, data, c)
     local textX = badge + h * BADGE_GAP + icon + h * TEXT_GAP
     list.rowStep = rowMin + gap
 
-    list.greeting:SetFontObject(fonts.body)
-    list.greeting:SetTextColor(INK[1], INK[2], INK[3])
-    list.greeting:SetWidth(width)
-    list.greeting:SetText(data.text)
-    local y = (data.text ~= "" and list.greeting:GetStringHeight() or 0) + h * SECTION_GAP
+    local blockH = R.LayoutTextBlock(list.block, {
+        width = width, portraitSize = PORTRAIT * c.w, gap = TEXT_GAP * c.w,
+        text = data.text, font = fonts.body, color = INK,
+        unit = data.unit, key = data.text,
+    })
+    local y = blockH + h * SECTION_GAP
 
     for _, r in ipairs(list.rows) do r:Hide(); r.entry = nil end
     for _, hd in ipairs(list.headers) do hd:Hide() end

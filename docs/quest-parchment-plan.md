@@ -111,9 +111,9 @@ capture stays out of combat as today.
 2. Parchment frame (done, 3.10.1): masks + shadow for plain/Horde/Alliance first, theme
    switching, chrome by alpha, fixed size, pinned buttons.
 3. Gossip + greeting lists (done, 3.10.2): own rendering, badges, keys past 9.
-4. Quest detail / progress / reward re-dress: title, tag line, wrap, seal,
+4. Quest detail / progress / reward re-dress (done, 3.11.0): title, tag line, wrap, seal,
    reward grid, scroll bar.
-5. Portrait model + item fallback.
+5. Portrait model + item fallback (done, 3.11.0).
 6. All theme masks via the build script; accessibility (Quest Text Contrast)
    uses Blizzard's contrast parchments and light text.
 7. Version bump, README, screenshots from you to tune.

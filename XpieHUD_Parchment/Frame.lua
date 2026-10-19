@@ -36,6 +36,7 @@ local DEFAULT_ATLAS = "QuestBG-Parchment"
 local PAD_X = 44 / 600                    -- text inset from the left/right edges
 local TITLE_TOP = 46 / 820
 local TITLE_COLOR = { 0.12, 0.06, 0.02 }
+local TAG_COLOR = { 0.29, 0.13, 0.03 }
 local BUTTON_W, BUTTON_WIDE, BUTTON_H = 170 / 600, 220 / 600, 30 / 820
 local BUTTON_BOTTOM = 58 / 820            -- button bottom above the parchment's bottom
 local CONTENT_GAP = 18 / 820              -- between the title / buttons and the content
@@ -51,14 +52,14 @@ R.dressed = dressed
 -- Fonts scale with the parchment: the mockups' sizes on an 820px parchment.
 -- Title / header in the quest title font, text in the quest font, badges and
 -- key hints in the standard UI font.
-local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 14, badge2 = 12, hint = 11 }
+local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 14, badge2 = 12, hint = 11, tag = 15 }
 local fonts = {}
 R.fonts = fonts
 
 local function UpdateFonts(h)
     local files = {
         title = (QuestTitleFont:GetFont()), header = (QuestTitleFont:GetFont()),
-        body = (QuestFont:GetFont()), hint = (GameFontNormal:GetFont()),
+        body = (QuestFont:GetFont()), hint = (GameFontNormal:GetFont()), tag = (QuestTitleFont:GetFont()),
         -- badges: Blizzard's number font (narrow digits, so 10-19 fit the circle)
         badge = (NumberFontNormal:GetFont()), badge2 = (NumberFontNormal:GetFont()),
     }
@@ -98,6 +99,8 @@ local function FadeChrome(frame, state)
     if frame == QuestFrame then
         Fade(state, QuestFramePortrait)
         Fade(state, QuestNpcNameFrame)
+        Fade(state, QuestFrame.AccountCompletedNotice)   -- shown in our tag line instead
+        Fade(state, QuestModelScene)                     -- our portrait replaces the side model
     end
     for _, panel in ipairs(PanelsOf(frame)) do
         for _, key in ipairs({ "Bg", "MaterialTopLeft", "MaterialTopRight", "MaterialBotLeft", "MaterialBotRight", "SealMaterialBG" }) do
@@ -133,6 +136,12 @@ local function CreateLayers(frame, state)
     title:SetMaxLines(2)
     title:SetTextColor(TITLE_COLOR[1], TITLE_COLOR[2], TITLE_COLOR[3])
     title:SetShadowColor(0, 0, 0, 0)
+
+    local tag = frame:CreateFontString(nil, "OVERLAY")
+    tag:SetJustifyH("CENTER")
+    tag:SetWordWrap(false)
+    tag:SetShadowColor(0, 0, 0, 0)
+    state.tag = tag
 
     state.shadow, state.shadowMask = shadow, shadowMask
     state.art, state.artMask, state.title = art, artMask, title
@@ -329,13 +338,24 @@ local function Layout(frame, state)
     state.title:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -pad, -h * TITLE_TOP)
     state.title:SetText(TitleText(frame))
 
+    -- tag line: quest classification + Warband Completed (Quest.lua)
+    local tagText = R.TagText and R:TagText(frame)
+    state.tag:SetFontObject(fonts.tag)
+    state.tag:SetTextColor(TAG_COLOR[1], TAG_COLOR[2], TAG_COLOR[3])
+    state.tag:ClearAllPoints()
+    state.tag:SetPoint("TOP", state.title, "BOTTOM", 0, -h * 6 / 820)
+    state.tag:SetText(tagText or "")
+    state.tag:SetShown(tagText ~= nil)
+
     PinButtons(frame, state, w, h)
 
     -- content area: under the title, above the pinned buttons
     local top = h * TITLE_TOP + math.max(state.title:GetStringHeight() or 0, h * 27 / 820) + h * CONTENT_GAP
+    if state.tag:IsShown() then top = top + h * 6 / 820 + (state.tag:GetStringHeight() or 0) end
     local bottom = h * (BUTTON_BOTTOM + BUTTON_H) + h * CONTENT_GAP
     state.content = { left = pad, right = pad, top = top, bottom = bottom, w = w, h = h }
     if R.LayoutLists then R:LayoutLists(frame, state) end
+    if R.LayoutQuestPage then R:LayoutQuestPage(frame, state) end
 end
 
 local function Dress(frame)
@@ -365,8 +385,9 @@ local function Undress(frame)
         RestorePoints(button, saved)
     end
     wipe(state.buttons)
-    for _, region in ipairs({ state.shadow, state.art, state.title }) do region:Hide() end
+    for _, region in ipairs({ state.shadow, state.art, state.title, state.tag }) do region:Hide() end
     if R.UndressLists then R:UndressLists(frame, state) end
+    if R.UndressQuestPage then R:UndressQuestPage(frame, state) end
     frame:SetSize(state.size[1], state.size[2])
     if state.clamped ~= nil then frame:SetClampedToScreen(state.clamped); state.clamped = nil end
     state.on = false
@@ -380,6 +401,7 @@ local hooked = false
 local function Refresh(frame)
     if frame and frame:IsShown() and module.look:IsActive() then Dress(frame) end
 end
+R.Refresh = Refresh
 
 local function HookBlizzard()
     if hooked then return end
@@ -397,6 +419,7 @@ local function HookBlizzard()
     -- the lists are (re)built here, also on QUEST_LOG_UPDATE while open
     if GossipFrame and GossipFrame.Update then hooksecurefunc(GossipFrame, "Update", function() Refresh(GossipFrame) end) end
     if QuestFrameGreetingPanel_OnShow then hooksecurefunc("QuestFrameGreetingPanel_OnShow", function() Refresh(QuestFrame) end) end
+    if R.HookQuestInfo then R:HookQuestInfo() end
 end
 
 -- ---------------------------------------------------------------------------
