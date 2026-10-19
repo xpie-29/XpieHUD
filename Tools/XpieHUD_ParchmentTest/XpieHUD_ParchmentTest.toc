@@ -1,0 +1,7 @@
+## Interface: 120105
+## Title: XpieHUD Parchment Test
+## Notes: Phase 0 test for the parchment quest window: torn-edge masks (RLE / raw / NPOT TGA), edge-following shadow, 3D portrait in the Talking Head ring, minimal scroll bar + flashing arrow, tan GoldRed buttons. /xpt
+## Author: Jeremy / Xpie
+## Version: 0.1
+
+ParchmentTest.lua
