@@ -18,6 +18,7 @@ XpieHUD is one **core** addon plus optional **extensions**. Each extension is a 
 | **XpieHUD - Zygor Guides** (`XpieHUD_Zygor/`) | Optional extension, requires XpieHUD Core and Zygor Guides Viewer. Gives Zygor the XpieHUD style. |
 | **XpieHUD - Baganator** (`XpieHUD_Baganator/`) | Optional extension, requires XpieHUD Core and Baganator. Gives Baganator's bag, bank and guild bank windows the look of Blizzard's Combined Backpack. |
 | **XpieHUD - RestedXP Guides** (`XpieHUD_RestedXP/`) | Optional extension, requires XpieHUD Core and RestedXP Guides. Gives RestedXP's guide window the XpieHUD style. |
+| **XpieHUD - MinimapButtonButton** (`XpieHUD_MinimapButtonButton/`) | Optional extension, requires XpieHUD Core (and MinimapButtonButton for the button styling). Makes MinimapButtonButton part of the micro menu and moves the queue status eye off it. |
 
 ### What XpieHUD Core provides
 
@@ -80,6 +81,17 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - **Baganator Profile**: XpieHUD can set each character's Baganator up with its own profile (category layout, icon size, spacing) the first time the character logs in, using Baganator's own import. It becomes the Baganator profile "XpieHUD"; switch profiles in Baganator any time. The XpieHUD settings page can re-apply it or turn this off.
 - **Original**: leaves Baganator completely alone. Changing the style takes effect after `/reload`.
 
+### MinimapButtonButton (XpieHUD - MinimapButtonButton)
+Choose a **Style**:
+- **XpieHUD** (default):
+  - MinimapButtonButton's button becomes a **native micro menu button**: Blizzard's micro button background (32x40), the pressed background while it's clicked or its drawer is open, a hover glow, and MinimapButtonButton's logo in the micro menu's gold.
+  - **Attach to Micro Menu** (default on): the button sits directly left of the micro menu's first button, overlapping it the way neighbouring micro buttons do, at the micro menu's size (it follows Edit Mode's Menu Size). It can't be dragged while attached; untick to place it with MinimapButtonButton's own drag. **Gap to Micro Menu** adds space (default 0).
+  - The **drawer** loses its tooltip box. Each addon button in it gets the micro button background with the round minimap border, background and highlight faded out, its icon at 20px, the same hover glow and pressed background, and micro menu spacing. **Drawer Spacing** adds space (default 0). Blizzard's own minimap buttons, if collected, keep their look.
+  - **Opacity** for the button and drawer (default 100%).
+- **Original**: leaves MinimapButtonButton's look and position alone.
+
+**Queue Status** (works with or without MinimapButtonButton): the Looking for Group eye moves off the micro menu to its own spot (default: the minimap's lower left), with its own **Eye Size** (replaces Edit Mode's Eye Size while separated). Tick **Unlock Eye** to show a handle and drag it; **Reset Eye Position** or `/xhud queuereset` puts it back. Untick **Separate From Micro Menu** to return it beside the micro menu. The eye is only re-anchored and scaled, never hidden or re-parented.
+
 ---
 
 ## Slash Commands
@@ -91,6 +103,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 | `/xhud questscan` | List frames still visible during a quest window (arms for the next NPC if none is open) |
 | `/xhud questhide <name>` | Add/remove a frame (case-sensitive) from the fade list |
 | `/xhud arrowdebug` | (Zygor extension) Report in chat when Zygor's arrow switches away from the gold sprite |
+| `/xhud queuereset` | (MinimapButtonButton extension) Put the queue status eye back at its default spot |
 | `/xhud reset` | Reset all settings to defaults (confirm twice) |
 
 ---
@@ -109,6 +122,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Optional: Zygor Guides Viewer, for the XpieHUD - Zygor Guides extension
 - Optional: Baganator, for the XpieHUD - Baganator extension
 - Optional: RestedXP Guides, for the XpieHUD - RestedXP Guides extension
+- Optional: MinimapButtonButton, for the button styling in the XpieHUD - MinimapButtonButton extension
 
 ## Notes
 
@@ -117,6 +131,7 @@ Choose a **Style** (needs Baganator's own **Blizzard** skin, under Customise > T
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.9.0**: New extension XpieHUD - MinimapButtonButton: its button as a native micro menu button attached left of the micro menu, drawer buttons in micro menu style; the queue status eye separated from the micro menu with its own position and size.
 - **3.8.7**: RestedXP: the gold waypoint arrow from the Zygor extension (`XpieHUD_RestedXP/Media/arrow.tga`, cut from the Zygor sheet as one upright frame that RestedXP turns), at the Zygor arrow's size.
 - **3.8.6**: RestedXP: current step background is square, like the chat window's (ChatFrameBackground tinted black).
 - **3.8.5**: RestedXP: scroll bar drawn as its own textures at Blizzard's sizes in the UI scale (the old scroll button template cropped and enlarged the arrows); current step background 2px tighter on every side.
