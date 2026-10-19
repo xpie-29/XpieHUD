@@ -35,6 +35,7 @@ local TITLE_TOP = 46 / 820
 local TITLE_COLOR = { 0.12, 0.06, 0.02 }
 local BUTTON_W, BUTTON_WIDE, BUTTON_H = 170 / 600, 220 / 600, 30 / 820
 local BUTTON_BOTTOM = 58 / 820            -- button bottom above the parchment's bottom
+local CONTENT_GAP = 18 / 820              -- between the title / buttons and the content
 -- Buttons: 128-GoldRedButton, desaturated + tan, plus an ADD copy at LIFT.
 local TAN = { 1.00, 0.82, 0.58 }
 local LIFT = 0.20
@@ -42,6 +43,25 @@ local CAP_LEFT, CAP_RIGHT, ART_BUTTON_H = 114, 292, 128   -- atlas piece sizes
 
 local R = {}
 local dressed = {}     -- [frame] = state
+R.dressed = dressed
+
+-- Fonts scale with the parchment: the mockups' sizes on an 820px parchment.
+-- Title / header in the quest title font, text in the quest font, badges and
+-- key hints in the standard UI font.
+local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 13, hint = 11 }
+local fonts = {}
+R.fonts = fonts
+
+local function UpdateFonts(h)
+    local files = {
+        title = (QuestTitleFont:GetFont()), header = (QuestTitleFont:GetFont()),
+        body = (QuestFont:GetFont()), badge = (GameFontNormal:GetFont()), hint = (GameFontNormal:GetFont()),
+    }
+    for key, size in pairs(FONT_SIZES) do
+        fonts[key] = fonts[key] or CreateFont("XpieHUDParchmentFont_" .. key)
+        fonts[key]:SetFont(files[key], math.floor(size * h / 820 + 0.5), "")
+    end
+end
 
 -- ---------------------------------------------------------------------------
 -- Alpha bookkeeping: hide by alpha, remember, restore
@@ -137,17 +157,37 @@ end
 local function ButtonsOf(frame)
     if frame == QuestFrame then
         return {
-            { QuestFrameAcceptButton, "LEFT" }, { QuestFrameDeclineButton, "RIGHT" },
-            { QuestFrameCompleteButton, "LEFT" }, { QuestFrameGoodbyeButton, "RIGHT" },
-            { QuestFrameCompleteQuestButton, "CENTER" }, { QuestFrameGreetingGoodbyeButton, "CENTER" },
+            { QuestFrameAcceptButton, "LEFT", "SPACE" }, { QuestFrameDeclineButton, "RIGHT", "ESC" },
+            { QuestFrameCompleteButton, "LEFT", "SPACE" }, { QuestFrameGoodbyeButton, "RIGHT", "ESC" },
+            { QuestFrameCompleteQuestButton, "CENTER", "SPACE" }, { QuestFrameGreetingGoodbyeButton, "CENTER", "ESC" },
         }
     elseif frame == GossipFrame then
-        return { { GossipFrame.GreetingPanel and GossipFrame.GreetingPanel.GoodbyeButton, "CENTER" } }
+        return { { GossipFrame.GreetingPanel and GossipFrame.GreetingPanel.GoodbyeButton, "CENTER", "ESC" } }
     end
     return {}
 end
 
 local skins = {}       -- [button] = our textures
+local HINT_COLOR = { 0.37, 0.24, 0.10, 0.85 }
+
+-- Space only acts where Core's Space would (PvP and gold quests confirm
+-- through popups the player clicks).
+local function SpaceWouldAct(button)
+    if button == QuestFrameAcceptButton then return not QuestFlagsPVP() end
+    if button == QuestFrameCompleteQuestButton then
+        local money = GetQuestMoneyToGet()
+        return not (money and money > 0)
+    end
+    return true
+end
+
+local function UpdateHint(button)
+    local skin = skins[button]
+    if not (skin and skin.hint) then return end
+    skin.hint:SetShown(skin.on and R.hintsOn and button:IsShown()
+        and (skin.key ~= "SPACE" or SpaceWouldAct(button)))
+end
+R.UpdateHint = UpdateHint
 
 local function SkinState(button)
     local skin = skins[button]
@@ -164,10 +204,12 @@ local function SkinState(button)
     for i = 4, 6 do skin.pieces[i]:SetAlpha(LIFT) end
 end
 
-local function Skin(button, state, height)
+local function Skin(button, state, height, key)
     local skin = skins[button]
     if not skin then
         skin = { pieces = {} }
+        skin.hint = button:CreateFontString(nil, "OVERLAY")
+        skin.hint:SetPoint("TOP", button, "BOTTOM", 0, -3)
         local L = button:CreateTexture(nil, "BACKGROUND", nil, 1)
         local R2 = button:CreateTexture(nil, "BACKGROUND", nil, 1)
         local M = button:CreateTexture(nil, "BACKGROUND", nil, 1)
@@ -200,7 +242,12 @@ local function Skin(button, state, height)
     for _, t in ipairs(skin.pieces) do t:Show() end
     skin.highlight:Show()
     skin.down = false
+    skin.key = key
+    skin.hint:SetFontObject(fonts.hint)
+    skin.hint:SetTextColor(HINT_COLOR[1], HINT_COLOR[2], HINT_COLOR[3], HINT_COLOR[4])
+    skin.hint:SetText(key or "")
     SkinState(button)
+    UpdateHint(button)
 end
 
 local function Unskin(button)
@@ -209,6 +256,7 @@ local function Unskin(button)
     skin.on = false
     for _, t in ipairs(skin.pieces) do t:Hide() end
     skin.highlight:Hide()
+    skin.hint:Hide()
 end
 
 local function SavePoints(region)
@@ -227,7 +275,7 @@ local function PinButtons(frame, state, w, h)
     local bw, bwide, bh = w * BUTTON_W, w * BUTTON_WIDE, h * BUTTON_H
     local x, y = w * PAD_X, h * BUTTON_BOTTOM
     for _, entry in ipairs(ButtonsOf(frame)) do
-        local button, side = entry[1], entry[2]
+        local button, side, key = entry[1], entry[2], entry[3]
         if button then
             state.buttons[button] = state.buttons[button] or SavePoints(button)
             button:ClearAllPoints()
@@ -238,7 +286,7 @@ local function PinButtons(frame, state, w, h)
             else
                 button:SetPoint("BOTTOM", frame, "BOTTOM", 0, y); button:SetSize(bwide, bh)
             end
-            Skin(button, state, bh)
+            Skin(button, state, bh, key)
         end
     end
 end
@@ -250,6 +298,9 @@ local function Layout(frame, state)
     local h = UIParent:GetHeight() * SCREEN_HEIGHT_SHARE
     local w = h * ASPECT
     frame:SetSize(w, h)
+    UpdateFonts(h)
+    state.title:SetFontObject(fonts.title)
+    state.title:SetTextColor(TITLE_COLOR[1], TITLE_COLOR[2], TITLE_COLOR[3])
 
     local atlas = ThemeAtlas(frame)
     local key = atlas:lower()
@@ -270,6 +321,12 @@ local function Layout(frame, state)
     state.title:SetText(TitleText(frame))
 
     PinButtons(frame, state, w, h)
+
+    -- content area: under the title, above the pinned buttons
+    local top = h * TITLE_TOP + math.max(state.title:GetStringHeight() or 0, h * 27 / 820) + h * CONTENT_GAP
+    local bottom = h * (BUTTON_BOTTOM + BUTTON_H) + h * CONTENT_GAP
+    state.content = { left = pad, right = pad, top = top, bottom = bottom, w = w, h = h }
+    if R.LayoutLists then R:LayoutLists(frame, state) end
 end
 
 local function Dress(frame)
@@ -300,6 +357,7 @@ local function Undress(frame)
     end
     wipe(state.buttons)
     for _, region in ipairs({ state.shadow, state.art, state.title }) do region:Hide() end
+    if R.UndressLists then R:UndressLists(frame, state) end
     frame:SetSize(state.size[1], state.size[2])
     state.on = false
 end
@@ -326,6 +384,9 @@ local function HookBlizzard()
     -- titles are set after the frames show
     if QuestFrame_SetPortrait then hooksecurefunc("QuestFrame_SetPortrait", function() Refresh(QuestFrame) end) end
     if GossipFrame and GossipFrame.HandleShow then hooksecurefunc(GossipFrame, "HandleShow", function() Refresh(GossipFrame) end) end
+    -- the lists are (re)built here, also on QUEST_LOG_UPDATE while open
+    if GossipFrame and GossipFrame.Update then hooksecurefunc(GossipFrame, "Update", function() Refresh(GossipFrame) end) end
+    if QuestFrameGreetingPanel_OnShow then hooksecurefunc("QuestFrameGreetingPanel_OnShow", function() Refresh(QuestFrame) end) end
 end
 
 -- ---------------------------------------------------------------------------
@@ -346,6 +407,14 @@ end
 
 function R:OnDialogShow(frame)
     Refresh(frame)
+end
+
+-- Core asks on every badge refresh (see Parchment.lua's look). Returns true
+-- while the gossip / greeting list on screen is ours.
+function R:RefreshBadges(show)
+    R.hintsOn = show
+    for button in pairs(skins) do UpdateHint(button) end
+    if R.ListBadges then return R:ListBadges(show) end
 end
 
 module.renderer = R

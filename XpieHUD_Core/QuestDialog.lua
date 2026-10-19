@@ -572,16 +572,16 @@ local function RefreshBadges()
 
     local show = IsEnabled() and XpieHUDDB.questDialogKeys and XpieHUDDB.questDialogBadges
         and not (inCombat or InCombatLockdown())
-    -- A quest look that draws its own badges and hints says so by returning true.
+    -- A quest look that draws the gossip / greeting lists itself badges them
+    -- itself (RefreshBadges returns true); one that draws its own Space / Esc
+    -- hints sets look.ownsKeyHints. Reward choices stay Core's unless the look
+    -- sets look.ownsRewardBadges.
     local look = Look()
-    if look and look.RefreshBadges and look:RefreshBadges(show) then
-        RefreshKeyHints(false)
-        return
-    end
-    RefreshKeyHints(show)
+    local lookLists = look and look.RefreshBadges and look:RefreshBadges(show)
+    RefreshKeyHints(show and not (look and look.ownsKeyHints))
     if not show then return end
 
-    if GossipFrame and GossipFrame:IsShown() then
+    if GossipFrame and GossipFrame:IsShown() and not lookLists then
         local scrollBox = GetGossipScrollBox()
         if scrollBox then
             scrollBox:ForEachFrame(function(frame, elementData)
@@ -595,12 +595,12 @@ local function RefreshBadges()
     end
 
     if QuestFrame and QuestFrame:IsShown() then
-        if QuestFrameGreetingPanel:IsShown() then
+        if QuestFrameGreetingPanel:IsShown() and not lookLists then
             for number, button in ipairs(GetGreetingButtons()) do
                 if number > MAX_CHOICES then break end
                 SetBadge(button, number, "quest")   -- greeting lists are all quests
             end
-        elseif QuestFrameRewardPanel:IsShown() then
+        elseif QuestFrameRewardPanel:IsShown() and not (look and look.ownsRewardBadges) then
             for number, button in ipairs(GetRewardChoiceButtons()) do
                 if number > MAX_CHOICES then break end
                 SetBadge(button, number, "reward")
@@ -741,7 +741,9 @@ end
 --   look:IsActive()          -> true while it is restyling the quest windows
 --   look:SelectNumber(n)     -> true/false if it handled choice n, nil = not mine
 --   look:HandleSpace()       -> same contract for Space
---   look:RefreshBadges(show) -> true if it drew badges + key hints itself
+--   look:RefreshBadges(show) -> true if it drew the gossip / greeting list badges itself
+--   look.ownsKeyHints        -> it draws its own Space / Esc hints
+--   look.ownsRewardBadges    -> it badges the reward choices itself
 --   look:OnDialogShow(frame) -> optional, after Core positions the frame
 -- Pass nil to unregister.
 function addon:SetQuestLook(look)

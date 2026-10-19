@@ -73,6 +73,11 @@ function look:OnDialogShow(frame)
     if r and r.OnDialogShow then r:OnDialogShow(frame) end
 end
 
+-- The parchment draws Space / Esc hints under its pinned buttons; reward
+-- choices stay Core's badges until phase 4 lays the rewards out.
+look.ownsKeyHints = true
+look.ownsRewardBadges = false
+
 module.look = look
 
 -- ---------------------------------------------------------------------------
