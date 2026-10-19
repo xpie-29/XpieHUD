@@ -52,7 +52,8 @@ R.dressed = dressed
 -- Fonts scale with the parchment: the mockups' sizes on an 820px parchment.
 -- Title / header in the quest title font, text in the quest font, badges and
 -- key hints in the standard UI font.
-local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 14, badge2 = 12, hint = 11, tag = 15 }
+local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 14, badge2 = 12, hint = 11, tag = 18 }
+local BUTTON_FONT_SIZE = 17          -- like the reward lines
 local fonts = {}
 R.fonts = fonts
 
@@ -66,6 +67,12 @@ local function UpdateFonts(h)
     for key, size in pairs(FONT_SIZES) do
         fonts[key] = fonts[key] or CreateFont("XpieHUDParchmentFont_" .. key)
         fonts[key]:SetFont(files[key], math.floor(size * h / 820 + 0.5), "")
+    end
+    -- button text: Blizzard's button fonts (gold / white / grey) at our size
+    for key, source in pairs({ button = GameFontNormal, buttonHighlight = GameFontHighlight, buttonDisabled = GameFontDisable }) do
+        fonts[key] = fonts[key] or CreateFont("XpieHUDParchmentFont_" .. key)
+        fonts[key]:CopyFontObject(source)
+        fonts[key]:SetFont((source:GetFont()), math.floor(BUTTON_FONT_SIZE * h / 820 + 0.5), "")
     end
 end
 
@@ -279,6 +286,12 @@ local function Skin(button, state, height, key)
     skin.highlight:Show()
     skin.down = false
     skin.key = key
+    if not skin.fonts then
+        skin.fonts = { button:GetNormalFontObject(), button:GetHighlightFontObject(), button:GetDisabledFontObject() }
+    end
+    button:SetNormalFontObject(fonts.button)
+    button:SetHighlightFontObject(fonts.buttonHighlight)
+    button:SetDisabledFontObject(fonts.buttonDisabled)
     skin.hint:SetFontObject(fonts.hint)
     local light = R.LightTextColors()
     local hint = light or HINT_COLOR
@@ -292,6 +305,12 @@ local function Unskin(button)
     local skin = skins[button]
     if not skin then return end
     skin.on = false
+    if skin.fonts then
+        if skin.fonts[1] then button:SetNormalFontObject(skin.fonts[1]) end
+        if skin.fonts[2] then button:SetHighlightFontObject(skin.fonts[2]) end
+        if skin.fonts[3] then button:SetDisabledFontObject(skin.fonts[3]) end
+        skin.fonts = nil
+    end
     for _, t in ipairs(skin.pieces) do t:Hide() end
     skin.highlight:Hide()
     skin.hint:Hide()

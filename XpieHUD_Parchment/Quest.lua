@@ -19,12 +19,19 @@ local core = XpieHUD
 local module = core:GetModule("parchment")
 local R = module.renderer
 
-local BODY_SIZE = 19 / 820           -- target quest text size, share of the parchment height
+-- Text sizes, shares of the parchment height (mockups: 820px). Largest to
+-- smallest: title 27 (Frame.lua) > section headers 21 > quest text 19 (= tag
+-- line) > rewards 17 (= buttons) > reward item names (Blizzard's, ~15).
+-- Blizzard's content is scaled so its headers (QuestTitleFont) land on
+-- HEADER_SIZE; the text and reward lines get fonts of their own sizes.
+local HEADER_SIZE = 21 / 820
+local BODY_SIZE   = 19 / 820
+local REWARD_SIZE = 17 / 820
 local MIN_SCALE, MAX_SCALE = 1, 2.5
+local BAR_FRAME = 22                 -- frame units kept beside the content for the scroll bar
 local PORTRAIT = 138 / 600           -- portrait size, share of the parchment width
 local TEXT_GAP = 16 / 600            -- portrait -> text, share of the parchment width
 local INSET_X = 10                   -- Blizzard's own left inset in the scroll child (native units)
-local BAR_SPACE = 17                 -- the minimal scroll bar beside the scroll frame (native units)
 
 local function Pages()
     return {
@@ -42,7 +49,35 @@ local saved = {}          -- [region] = { points, w, h, scale } (Blizzard's own 
 local hidden = {}         -- [fontString] = true while hidden + resized by us
 local blocks = {}         -- [page name] = text block
 local arrows = {}         -- [scroll frame] = "more below" arrow
-local barState = {}       -- [scroll bar] = its own hide-if-unscrollable setting
+local barState = {}       -- [scroll bar] = { hide = its hide-if-unscrollable, scale }
+local rules = {}          -- [scroll frame] = top divider
+local fontSaved = {}      -- [fontString] = { font object, r, g, b } (Blizzard's)
+local qfonts = {}
+
+local function UpdateQuestFonts(h, scale)
+    local file = (QuestFont:GetFont())
+    for key, size in pairs({ body = BODY_SIZE, reward = REWARD_SIZE }) do
+        qfonts[key] = qfonts[key] or CreateFont("XpieHUDParchmentQuestFont_" .. key)
+        qfonts[key]:SetFont(file, math.floor(h * size / scale * 2 + 0.5) / 2, "")
+    end
+end
+
+-- Blizzard's text in our sizes, keeping Blizzard's colour (material aware)
+local function SetFont(fs, font)
+    if not fs then return end
+    local r, g, b = fs:GetTextColor()
+    if not fontSaved[fs] then fontSaved[fs] = { fs:GetFontObject(), r, g, b } end
+    fs:SetFontObject(font)
+    fs:SetTextColor(r, g, b)
+end
+
+local function RestoreFonts()
+    for fs, s in pairs(fontSaved) do
+        if s[1] then fs:SetFontObject(s[1]) end
+        fs:SetTextColor(s[2], s[3], s[4])
+    end
+    wipe(fontSaved)
+end
 
 local function Save(region)
     if saved[region] then return end
@@ -78,6 +113,7 @@ end
 local function RestoreShared()
     for fs in pairs(hidden) do ShowText(fs) end
     if QuestInfoRewardsFrame then QuestInfoRewardsFrame:SetScale(1) end
+    RestoreFonts()
     for name, block in pairs(blocks) do
         if pages and pages[name] and pages[name].shared then block:Hide() end
     end
@@ -117,8 +153,9 @@ function R:LayoutQuestPage(frame, state)
         return
     end
     local c = state.content
-    local quest = select(2, QuestFont:GetFont()) or 13
-    local scale = math.max(MIN_SCALE, math.min(MAX_SCALE, (c.h * BODY_SIZE) / quest))
+    local header = select(2, QuestTitleFont:GetFont()) or 18
+    local scale = math.max(MIN_SCALE, math.min(MAX_SCALE, (c.h * HEADER_SIZE) / header))
+    UpdateQuestFonts(c.h, scale)
     local cw, ch = c.w - c.left - c.right, c.h - c.top - c.bottom
 
     -- Blizzard's scroll frame, scaled, in the content area (its bar beside it)
@@ -127,23 +164,31 @@ function R:LayoutQuestPage(frame, state)
     sf:SetScale(scale)
     sf:ClearAllPoints()
     sf:SetPoint("TOPLEFT", frame, "TOPLEFT", c.left / scale, -c.top / scale)
-    local nativeW = cw / scale - BAR_SPACE
+    local nativeW = (cw - BAR_FRAME) / scale
     sf:SetSize(nativeW, ch / scale)
     if page.child then Save(page.child); page.child:SetWidth(nativeW) end
     -- Blizzard's bar only while there's something to scroll
     local bar = sf.ScrollBar
-    if bar and bar.SetHideIfUnscrollable and not barState[bar] then
-        barState[bar] = { hide = bar.hideIfUnscrollable or false }
-        bar:SetHideIfUnscrollable(true)
+    if bar and not barState[bar] then
+        barState[bar] = { hide = bar.hideIfUnscrollable or false, scale = bar:GetScale() }
+        if bar.SetHideIfUnscrollable then bar:SetHideIfUnscrollable(true) end
     end
+    -- ...at its native size, not the content's
+    if bar then bar:SetScale(1 / scale) end
     local textW = nativeW - INSET_X * 2
 
     -- wider Blizzard text under ours
     if page.shared and QuestInfoObjectivesText then QuestInfoObjectivesText:SetWidth(textW) end
-    if page.shared and QuestInfoRewardsFrame and QuestInfoRewardsFrame:IsShown() then
-        local width = QuestInfoRewardsFrame:GetWidth()
-        if not width or width < 100 then width = 285 end
-        QuestInfoRewardsFrame:SetScale(textW / width)
+    -- text at the quest text size, reward lines at the reward size
+    if page.shared then
+        SetFont(QuestInfoObjectivesText, qfonts.body)
+        SetFont(QuestInfoGroupSize, qfonts.body)
+        local rewards = QuestInfoRewardsFrame
+        if rewards then
+            SetFont(rewards.ItemReceiveText, qfonts.reward)
+            SetFont(rewards.ItemChooseText, qfonts.reward)
+            SetFont(rewards.PlayerTitleText, qfonts.reward)
+        end
     end
     if name == "progress" and QuestProgressRequiredItemsText then QuestProgressRequiredItemsText:SetWidth(textW) end
 
@@ -161,7 +206,7 @@ function R:LayoutQuestPage(frame, state)
         portraitSize = PORTRAIT * c.w / scale,
         gap = TEXT_GAP * c.w / scale,
         text = page.get and page.get() or "",
-        font = QuestFont,
+        font = qfonts.body,
         color = { r, g, b },
         unit = "questnpc",
         key = (GetQuestID and GetQuestID() or 0) .. name,
@@ -182,8 +227,24 @@ function R:LayoutQuestPage(frame, state)
         arrows[sf] = more
     end
     more:ClearAllPoints()
-    more:SetPoint("TOP", frame, "TOPLEFT", c.w - c.right - BAR_SPACE * scale / 2, -(c.top + ch) + 2)
+    if bar then
+        more:SetPoint("TOP", bar, "BOTTOM", 0, -2)          -- centred under the bar
+    else
+        more:SetPoint("TOP", frame, "TOPLEFT", c.w - c.right - BAR_FRAME / 2, -(c.top + ch) + 2)
+    end
     more.enabled = true
+
+    -- a native divider at the top of the text once it is scrolled
+    local rule = rules[sf]
+    if not rule then
+        rule = R.AttachTopRule(sf, frame)
+        rules[sf] = rule
+    end
+    rule:ClearAllPoints()
+    rule:SetPoint("BOTTOMLEFT", frame, "TOPLEFT", c.left, -c.top + 3)
+    rule:SetSize(cw - BAR_FRAME, R.RULE_HEIGHT)
+    rule.enabled = true
+    rule.Update()
     if sf.UpdateScrollChildRect then sf:UpdateScrollChildRect() end
     more.Update()
 end
@@ -193,8 +254,12 @@ function R:UndressQuestPage(frame, state)
     RestoreShared()
     for _, block in pairs(blocks) do block:Hide() end
     for region in pairs(saved) do Restore(region) end
-    for bar, s in pairs(barState) do bar:SetHideIfUnscrollable(s.hide) end
+    for bar, s in pairs(barState) do
+        if bar.SetHideIfUnscrollable then bar:SetHideIfUnscrollable(s.hide) end
+        bar:SetScale(s.scale)
+    end
     wipe(barState)
+    for _, rule in pairs(rules) do rule.enabled = false; rule.Update() end
     -- (QuestInfoObjectivesText's width: Blizzard sets it on every display)
     for _, more in pairs(arrows) do more.enabled = false; more.Update() end
 end

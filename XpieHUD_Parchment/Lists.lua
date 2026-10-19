@@ -150,10 +150,13 @@ local function CreateList(frame)
     -- "More below": the chat frame's ScrollToBottomButton (Shared.lua)
     local more = R.AttachMoreArrow(sf, frame)
     list.more = more
+    -- divider at the top once the list is scrolled (Shared.lua)
+    list.rule = R.AttachTopRule(sf, frame)
 
     local function UpdateScroll()
         if list.bar then list.bar:SetShown(sf:GetVerticalScrollRange() > 0.5 and sf:IsShown()) end
         more.Update()
+        list.rule.Update()
     end
     if not sf:GetScript("OnMouseWheel") then
         sf:SetScript("OnMouseWheel", function(self, delta)
@@ -344,6 +347,9 @@ function R:LayoutLists(frame, state)
     end
     list.more:ClearAllPoints()
     list.more:SetPoint("TOP", list.sf, "BOTTOMRIGHT", c.w * BAR_GAP + BAR_W / 2, -2)
+    list.rule:ClearAllPoints()
+    list.rule:SetPoint("BOTTOMLEFT", list.sf, "TOPLEFT", 0, 3)
+    list.rule:SetSize(list.sf:GetWidth(), R.RULE_HEIGHT)
     list.sf:Show()
 
     HideBlizzardList(BlizzardListOf(frame))

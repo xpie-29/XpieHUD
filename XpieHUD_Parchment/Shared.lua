@@ -10,6 +10,7 @@ local R = module.renderer
 
 local TALK_ANIMATION = 60          -- EmoteTalk
 local IDLE_ANIMATION = 0
+local TALK_REPEAT = 4              -- seconds; restart the talk if it has not restarted itself
 local VOICE_POLL = 0.2             -- seconds between voice checks
 -- Beside the portrait the text may run this share of a line past its bottom,
 -- so text cut mid-sentence carries on on the next line without a gap.
@@ -41,6 +42,11 @@ local function UpdateAnimation(p)
     if p.animation ~= wanted then
         p.animation = wanted
         p.model:SetAnimation(wanted)
+        p.talkStarted = GetTime()
+    elseif wanted == TALK_ANIMATION and GetTime() - (p.talkStarted or 0) > TALK_REPEAT then
+        -- in case OnAnimFinished does not fire for this model
+        p.model:SetAnimation(TALK_ANIMATION)
+        p.talkStarted = GetTime()
     end
 end
 
@@ -49,6 +55,13 @@ function R.NewPortrait(parent)
     p.bg = p:CreateTexture(nil, "BACKGROUND")
     p.bg:SetAtlas("TalkingHeads-PortraitBg")
     p.model = CreateFrame("PlayerModel", nil, p)
+    -- EmoteTalk plays once: start it again while the voice-over goes on
+    p.model:SetScript("OnAnimFinished", function()
+        if p.animation == TALK_ANIMATION and VoicePlaying() then
+            p.model:SetAnimation(TALK_ANIMATION)
+            p.talkStarted = GetTime()
+        end
+    end)
     -- animations only take once the model has loaded
     p.model:SetScript("OnModelLoaded", function()
         p.loaded = true
@@ -184,6 +197,23 @@ end
 -- "More below" (the chat frame's ScrollToBottomButton: art + ADD flash),
 -- shown while a scroll frame isn't at its bottom. Returns an update function.
 -- ---------------------------------------------------------------------------
+-- A native divider (the quest greeting's UI-HorizontalBreak) along the top
+-- of a scroll area, shown once the text has been scrolled, so cut-off text
+-- does not end in a hard edge. Returns the texture (its .Update refreshes).
+R.RULE_HEIGHT = 14
+function R.AttachTopRule(sf, parent)
+    local rule = parent:CreateTexture(nil, "OVERLAY")
+    rule:SetTexture("Interface\\QuestFrame\\UI-HorizontalBreak")
+    rule:SetTexCoord(0, 1, 0.25, 0.75)
+    local function Update()
+        rule:SetShown(rule.enabled ~= false and sf:IsVisible() and sf:GetVerticalScroll() > 1)
+    end
+    sf:HookScript("OnVerticalScroll", Update)
+    sf:HookScript("OnScrollRangeChanged", Update)
+    rule.Update = Update
+    return rule
+end
+
 function R.AttachMoreArrow(sf, parent)
     local more = CreateFrame("Button", nil, parent)
     more:SetSize(17, 15)
