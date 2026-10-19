@@ -5,8 +5,11 @@
 -- beside it, native icons, reward grid, minimal scroll bar and tan buttons).
 -- Design and phases: docs/quest-parchment-plan.md.
 --
--- Style "parchment" (default) restyles the windows; "blizzard" leaves Core's
--- quest window exactly as it is without the module. Blizzard's QuestFrame and
+-- Style "parchment" (default) restyles the windows as a floating parchment;
+-- "framed" keeps that layout inside Blizzard's own frame border (portrait,
+-- title bar, close button) with the parchment unmasked, as close to stock
+-- as the layout allows; "blizzard" leaves Core's quest window exactly as it
+-- is without the module. Blizzard's QuestFrame and
 -- GossipFrame stay the real, shown frames (AI Quest Voices and the accept /
 -- complete flows rely on that); the module only re-dresses them, and hands
 -- number keys, Space and badges back to Core through XpieHUD:SetQuestLook().
@@ -26,7 +29,7 @@ local CONFLICTS = { "DialogueUI", "Immersion", "Storyline" }
 local module = core:RegisterModule("parchment", {
     title = "Quest Parchment",
     defaults = {
-        style = "parchment",   -- "parchment" | "blizzard"
+        style = "parchment",   -- "parchment" | "framed" | "blizzard"
         shadowOpacity = 70,    -- %, the #191919 shadow around the parchment's edge
         portraitZoom = 80,     -- %, PlayerModel portrait zoom (100 = head only)
     },
@@ -48,7 +51,7 @@ local look = {}
 
 function look:IsActive()
     return module.renderer ~= nil
-        and module.db.style == "parchment"
+        and module.db.style ~= "blizzard"
         and not module.conflict
         and XpieHUDDB.questDialogEnabled
 end
@@ -90,7 +93,7 @@ end
 
 function module:OnLogin()
     self.conflict = FindConflict()
-    if self.conflict and self.db.style == "parchment" then
+    if self.conflict and self.db.style ~= "blizzard" then
         core:Print(("Quest Parchment is off: %s also changes the quest windows. Disable one of the two."):format(self.conflict))
     end
     core:SetQuestLook(look)
@@ -108,12 +111,13 @@ function module:BuildSettings(page)
         key = "style", label = "Style",
         values = function()
             return {
-                { key = "parchment", label = "Parchment" },
+                { key = "parchment", label = "Parchment (floating)" },
+                { key = "framed",    label = "Parchment in Blizzard's frame" },
                 { key = "blizzard",  label = "Blizzard (XpieHUD Core's quest window)" },
             }
         end,
     })
     page:Space(6)
-    page:Slider({ key = "shadowOpacity", label = "Shadow Opacity", description = "The soft dark shadow that follows the parchment's torn edge.", min = 0, max = 100, step = 5, format = "%d%%" })
+    page:Slider({ key = "shadowOpacity", label = "Shadow Opacity", description = "The soft dark shadow that follows the parchment's torn edge (floating parchment only).", min = 0, max = 100, step = 5, format = "%d%%" })
     page:Slider({ key = "portraitZoom", label = "Portrait Zoom", description = "How close the NPC's 3D portrait is framed. 100% shows the head only; lower shows more of the model.", min = 50, max = 100, step = 5, format = "%d%%" })
 end

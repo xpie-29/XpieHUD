@@ -25,6 +25,11 @@ local QUEST_BADGE_X  = -1    -- quest-icon number: offset from the icon's bottom
 local QUEST_BADGE_Y  = -1
 local MIN_SCALE, MAX_SCALE = 50, 150
 local MAX_CHOICES    = 19    -- 1-9, 0 = 10, Shift+1..9 = 11-19
+-- Windows a gossip option opens in place of the dialog: they open with
+-- their top-left corner where the dialog's was. (Blizzard_TrainerUI, load
+-- on demand: UIPanelWindows["ClassTrainerFrame"] = { area = "left", pushable = 0 })
+local FOLLOW_FRAMES  = { "ClassTrainerFrame" }
+local FOLLOW_WINDOW  = 2     -- seconds after a dialog closes that a window still follows it
 
 local dialogFrames = {}
 local initialized = false
@@ -678,7 +683,65 @@ local function OnDialogShow(frame)
     end
 end
 
-local function OnDialogHide()
+-- ---------------------------------------------------------------------------
+-- Follow windows (trainer ...): open where the dialog was
+-- ---------------------------------------------------------------------------
+local lastDialog            -- { x, y (top-left, screen px), time } of the last dialog to close
+local following = {}        -- [frame] = { x, y } while it follows
+local followHooked = {}     -- [frame name] = true
+
+local function DialogTopLeft()
+    for _, frame in ipairs(dialogFrames) do
+        if frame:IsShown() and frame:GetLeft() then
+            local s = frame:GetEffectiveScale()
+            return frame:GetLeft() * s, frame:GetTop() * s
+        end
+    end
+    if lastDialog and GetTime() - lastDialog.time <= FOLLOW_WINDOW then
+        return lastDialog.x, lastDialog.y
+    end
+end
+
+local function PlaceFollower(frame)
+    local spot = following[frame]
+    if positioning or not spot or InCombatLockdown() then return end
+    positioning = true
+    local s = frame:GetEffectiveScale()
+    frame:ClearAllPoints()
+    frame:SetPoint("TOPLEFT", UIParent, "BOTTOMLEFT", spot[1] / s, spot[2] / s)
+    positioning = false
+end
+
+local function HookFollower(frame)
+    frame:HookScript("OnShow", function(self)
+        following[self] = nil
+        if not IsEnabled() or InCombatLockdown() then return end
+        local x, y = DialogTopLeft()
+        if x then
+            following[self] = { x, y }
+            PlaceFollower(self)
+        end
+    end)
+    frame:HookScript("OnHide", function(self) following[self] = nil end)
+    -- the panel manager lays the left area out again (other panels opening)
+    hooksecurefunc(frame, "SetPoint", PlaceFollower)
+end
+
+local function HookFollowers()
+    for _, name in ipairs(FOLLOW_FRAMES) do
+        local frame = _G[name]
+        if frame and not followHooked[name] then
+            followHooked[name] = true
+            HookFollower(frame)
+        end
+    end
+end
+
+local function OnDialogHide(frame)
+    if frame and frame.GetLeft and frame:GetLeft() then
+        local s = frame:GetEffectiveScale()
+        lastDialog = { x = frame:GetLeft() * s, y = frame:GetTop() * s, time = GetTime() }
+    end
     restoreToken = restoreToken + 1
     local token = restoreToken
     C_Timer.After(RESTORE_DELAY, function()
@@ -700,6 +763,8 @@ eventFrame:SetScript("OnEvent", function(_, event)
         inCombat = false
         UpdateState()
         RefreshBadges()
+    elseif event == "ADDON_LOADED" then
+        HookFollowers()
     end
 end)
 
@@ -748,6 +813,8 @@ function addon:InitQuestDialog()
     HookBadges()
     eventFrame:RegisterEvent("PLAYER_REGEN_DISABLED")
     eventFrame:RegisterEvent("PLAYER_REGEN_ENABLED")
+    eventFrame:RegisterEvent("ADDON_LOADED")      -- trainer UI loads on demand
+    HookFollowers()
 
     initialized = true
     self:ApplyQuestDialog()

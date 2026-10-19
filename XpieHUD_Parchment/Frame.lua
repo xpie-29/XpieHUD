@@ -9,6 +9,9 @@
 --     (C_QuestLog.GetQuestDetailsTheme), masked by our torn-edge outline
 --     (Media/masks, built by Media/src/masks.lua), over a shadow made of the
 --     same outline blurred (#191919, Shadow Opacity)
+--   * Style "framed": the same layout inside Blizzard's own frame (border,
+--     portrait, title bar, close button kept), the parchment unmasked in the
+--     frame's background area like stock, no shadow
 --   * the title pinned at the top, centred, wrapping centred
 --   * Blizzard's own bottom buttons pinned at fixed spots and re-skinned with
 --     128-GoldRedButton desaturated + tan (their red art kept at alpha 0, so
@@ -45,10 +48,18 @@ local CONTENT_GAP_BOTTOM = 40 / 820       -- between the content and the buttons
 local TAN = { 1.00, 0.82, 0.58 }
 local LIFT = 0.20
 local CAP_LEFT, CAP_RIGHT, ART_BUTTON_H = 114, 292, 128   -- atlas piece sizes
+-- Framed style: the title clears Blizzard's portrait ring (TOPLEFT -5,7, ~60px)
+local FRAMED_TITLE_PAD = 64
+local FRAMED_BG_INSETS = { 2, -21, -2, 2 }   -- ButtonFrameTemplate's Bg (if it has none)
 
 local R = {}
 local dressed = {}     -- [frame] = state
 R.dressed = dressed
+
+local function Framed()
+    return module.db.style == "framed"
+end
+R.Framed = Framed
 
 -- Fonts scale with the parchment: the mockups' sizes on an 820px parchment.
 -- Title / header in the quest title font, text in the quest font, badges and
@@ -100,13 +111,21 @@ local function PanelsOf(frame)
     return {}
 end
 
+-- Framed keeps the border, portrait, title bar and close button.
+local FLOATING_CHROME = { "NineSlice", "PortraitContainer", "TitleContainer", "CloseButton", "Bg", "TopTileStreaks", "Inset", "Background" }
+local FRAMED_CHROME = { "Bg", "TopTileStreaks", "Inset", "Background" }
+
 local function FadeChrome(frame, state)
-    for _, key in ipairs({ "NineSlice", "PortraitContainer", "TitleContainer", "CloseButton", "Bg", "TopTileStreaks", "Inset", "Background" }) do
+    local framed = Framed()
+    state.framed = framed
+    for _, key in ipairs(framed and FRAMED_CHROME or FLOATING_CHROME) do
         Fade(state, frame[key])
     end
     if frame == QuestFrame then
-        Fade(state, QuestFramePortrait)
-        Fade(state, QuestNpcNameFrame)
+        if not framed then
+            Fade(state, QuestFramePortrait)
+            Fade(state, QuestNpcNameFrame)
+        end
         Fade(state, QuestFrame.AccountCompletedNotice)   -- shown in our tag line instead
         Fade(state, QuestModelScene)                     -- our portrait replaces the side model
     end
@@ -116,7 +135,7 @@ local function FadeChrome(frame, state)
         end
     end
     -- the invisible close button mustn't catch clicks on the parchment
-    if frame.CloseButton and frame.CloseButton:IsMouseEnabled() then
+    if not framed and frame.CloseButton and frame.CloseButton:IsMouseEnabled() then
         state.closeMouse = true
         frame.CloseButton:EnableMouse(false)
     end
@@ -153,6 +172,7 @@ local function CreateLayers(frame, state)
 
     state.shadow, state.shadowMask = shadow, shadowMask
     state.art, state.artMask, state.title = art, artMask, title
+    state.masked = true
 end
 
 local function ThemeAtlas(frame)
@@ -378,10 +398,31 @@ local function Layout(frame, state)
     state.shadow:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", px, -py)
     state.shadow:SetColorTexture(SHADOW_RGB[1], SHADOW_RGB[2], SHADOW_RGB[3], (module.db.shadowOpacity or 70) / 100)
 
+    -- floating: the masked parchment is the window; framed: the whole art
+    -- (torn edges on Blizzard's dark backing, like stock) in the frame's
+    -- background area, inside Blizzard's border
+    local framed = state.framed
+    state.shadow:SetShown(not framed)
+    state.art:ClearAllPoints()
+    if framed then
+        if state.masked then state.art:RemoveMaskTexture(state.artMask); state.masked = false end
+        if frame.Bg and frame.Bg.GetNumPoints and frame.Bg:GetNumPoints() > 0 then
+            state.art:SetAllPoints(frame.Bg)
+        else
+            local i = FRAMED_BG_INSETS
+            state.art:SetPoint("TOPLEFT", frame, "TOPLEFT", i[1], i[2])
+            state.art:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", i[3], i[4])
+        end
+    else
+        if not state.masked then state.art:AddMaskTexture(state.artMask); state.masked = true end
+        state.art:SetAllPoints(frame)
+    end
+
     local pad = w * PAD_X
+    local titlePad = framed and math.max(pad, FRAMED_TITLE_PAD) or pad
     state.title:ClearAllPoints()
-    state.title:SetPoint("TOPLEFT", frame, "TOPLEFT", pad, -h * TITLE_TOP)
-    state.title:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -pad, -h * TITLE_TOP)
+    state.title:SetPoint("TOPLEFT", frame, "TOPLEFT", titlePad, -h * TITLE_TOP)
+    state.title:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -titlePad, -h * TITLE_TOP)
     state.title:SetText(TitleText(frame))
 
     -- tag line: quest classification + Warband Completed (Quest.lua)
@@ -416,8 +457,18 @@ local function Dress(frame)
         state.size = { frame:GetSize() }
         FadeChrome(frame, state)
         state.on = true
+    elseif state.framed ~= Framed() then
+        -- style switched while dressed: chrome for the other style
+        Unfade(state)
+        if state.closeMouse and frame.CloseButton then frame.CloseButton:EnableMouse(true) end
+        state.closeMouse = nil
+        FadeChrome(frame, state)
+        for button in pairs(state.buttons) do
+            local skin = skins[button]
+            if skin then skin.on = false end
+        end
     end
-    for _, region in ipairs({ state.shadow, state.art, state.title }) do region:Show() end
+    for _, region in ipairs({ state.art, state.title }) do region:Show() end
     Layout(frame, state)
 end
 
