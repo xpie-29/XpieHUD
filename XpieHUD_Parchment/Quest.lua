@@ -42,6 +42,7 @@ local saved = {}          -- [region] = { points, w, h, scale } (Blizzard's own 
 local hidden = {}         -- [fontString] = true while hidden + resized by us
 local blocks = {}         -- [page name] = text block
 local arrows = {}         -- [scroll frame] = "more below" arrow
+local barState = {}       -- [scroll bar] = its own hide-if-unscrollable setting
 
 local function Save(region)
     if saved[region] then return end
@@ -129,6 +130,12 @@ function R:LayoutQuestPage(frame, state)
     local nativeW = cw / scale - BAR_SPACE
     sf:SetSize(nativeW, ch / scale)
     if page.child then Save(page.child); page.child:SetWidth(nativeW) end
+    -- Blizzard's bar only while there's something to scroll
+    local bar = sf.ScrollBar
+    if bar and bar.SetHideIfUnscrollable and not barState[bar] then
+        barState[bar] = { hide = bar.hideIfUnscrollable or false }
+        bar:SetHideIfUnscrollable(true)
+    end
     local textW = nativeW - INSET_X * 2
 
     -- wider Blizzard text under ours
@@ -186,6 +193,8 @@ function R:UndressQuestPage(frame, state)
     RestoreShared()
     for _, block in pairs(blocks) do block:Hide() end
     for region in pairs(saved) do Restore(region) end
+    for bar, s in pairs(barState) do bar:SetHideIfUnscrollable(s.hide) end
+    wipe(barState)
     -- (QuestInfoObjectivesText's width: Blizzard sets it on every display)
     for _, more in pairs(arrows) do more.enabled = false; more.Update() end
 end

@@ -9,19 +9,60 @@ local module = core:GetModule("parchment")
 local R = module.renderer
 
 local TALK_ANIMATION = 60          -- EmoteTalk
-local TALK_SECONDS = 3.5           -- then back to idle
+local IDLE_ANIMATION = 0
+local VOICE_POLL = 0.2             -- seconds between voice checks
+-- Beside the portrait the text may run this share of a line past its bottom,
+-- so text cut mid-sentence carries on on the next line without a gap.
+local LINE_SLACK = 0.6
+local LINE_SPACING = 2             -- between the beside and the below text when a sentence continues
 local FALLBACK_ICON = "Interface\\QuestFrame\\UI-QuestLog-BookIcon"   -- Blizzard's own, for item quests
 local RING_INSET = 17 / 150        -- the ring's opening, as a share of its size
 local RINGS = { Horde = "TalkingHeads-Horde-PortraitFrame", Alliance = "TalkingHeads-Alliance-PortraitFrame" }
 
 -- ---------------------------------------------------------------------------
 -- Portrait
+-- The NPC talks while a voice-over is playing (AI Quest Voices: its global
+-- AIQuestVoicesController, read only) and stands idle otherwise, so without
+-- a voice-over the portrait is simply still while you read.
 -- ---------------------------------------------------------------------------
+local function VoicePlaying()
+    local voice = _G.AIQuestVoicesController
+    if type(voice) ~= "table" or not voice.isPlaying or voice.paused then return false end
+    if voice.currentHandle and C_Sound and C_Sound.IsPlaying then
+        return C_Sound.IsPlaying(voice.currentHandle) and true or false
+    end
+    return true
+end
+R.VoicePlaying = VoicePlaying
+
+local function UpdateAnimation(p)
+    if not (p.loaded and p.model:IsShown()) then return end
+    local wanted = VoicePlaying() and TALK_ANIMATION or IDLE_ANIMATION
+    if p.animation ~= wanted then
+        p.animation = wanted
+        p.model:SetAnimation(wanted)
+    end
+end
+
 function R.NewPortrait(parent)
     local p = CreateFrame("Frame", nil, parent)
     p.bg = p:CreateTexture(nil, "BACKGROUND")
     p.bg:SetAtlas("TalkingHeads-PortraitBg")
     p.model = CreateFrame("PlayerModel", nil, p)
+    -- animations only take once the model has loaded
+    p.model:SetScript("OnModelLoaded", function()
+        p.loaded = true
+        p.animation = nil
+        p.model:SetPortraitZoom((module.db.portraitZoom or 80) / 100)
+        UpdateAnimation(p)
+    end)
+    local elapsed = 0
+    p:SetScript("OnUpdate", function(_, dt)
+        elapsed = elapsed + dt
+        if elapsed < VOICE_POLL then return end
+        elapsed = 0
+        UpdateAnimation(p)
+    end)
     p.icon = p:CreateTexture(nil, "ARTWORK")
     p.over = CreateFrame("Frame", nil, p)
     p.over:SetAllPoints()
@@ -55,14 +96,11 @@ function R.SetPortrait(p, size, unit, key)
     p.model:SetPortraitZoom((module.db.portraitZoom or 80) / 100)
     if p.key == key then return end
     p.key = key
+    p.loaded, p.animation = false, nil
     p.model:ClearModel()
     p.model:SetUnit(unit)
     p.model:SetPortraitZoom((module.db.portraitZoom or 80) / 100)
     p.model:SetCamDistanceScale(1)
-    p.model:SetAnimation(TALK_ANIMATION)
-    C_Timer.After(TALK_SECONDS, function()
-        if p.key == key then p.model:SetAnimation(0) end
-    end)
 end
 
 -- ---------------------------------------------------------------------------
@@ -73,6 +111,8 @@ end
 local function Split(fs, text, maxHeight)
     fs:SetText(text)
     if fs:GetStringHeight() <= maxHeight then return text, "" end
+    fs:SetText("X")
+    maxHeight = maxHeight + fs:GetStringHeight() * LINE_SLACK
     local breaks = {}
     for pos in text:gmatch("()[ \n]") do breaks[#breaks + 1] = pos end
     -- languages written without spaces: the text starts below the portrait
@@ -127,9 +167,11 @@ function R.LayoutTextBlock(b, o)
     b.below:SetWidth(o.width)
     b.below:SetText(tail)
     if tail ~= "" then
-        b.below:SetPoint("TOPLEFT", b, "TOPLEFT", 0, -(height + gap * 0.5))
+        -- a sentence cut mid-way carries straight on; a paragraph break keeps
+        -- its own blank line (the tail starts with it)
+        b.below:SetPoint("TOPLEFT", b, "TOPLEFT", 0, -(height + LINE_SPACING))
         b.below:Show()
-        height = height + gap * 0.5 + b.below:GetStringHeight()
+        height = height + LINE_SPACING + b.below:GetStringHeight()
     else
         b.below:Hide()
     end
