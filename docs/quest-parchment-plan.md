@@ -1,7 +1,8 @@
 # XpieHUD - Quest Parchment: build plan
 
-Status (2026-10-19): design settled through six mockup rounds; phase 0 in-game
-test passed (Tools/XpieHUD_ParchmentTest). Nothing built in the addon yet.
+Status (2026-10-19): done at v3.13.1. Phases 0-6 built and tuned in game;
+v3.13.0 added the "Parchment in Blizzard's frame" style. Only further in-game
+testing remains. (The plan below is kept as written, for the record.)
 
 ## What it is
 

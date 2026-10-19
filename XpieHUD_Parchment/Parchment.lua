@@ -102,7 +102,6 @@ end
 function module:BuildSettings(page)
     page:Status(function()
         if module.conflict then return ("(off: %s is loaded)"):format(module.conflict) end
-        if not module.renderer then return "(in development: no visual changes yet)" end
         return ""
     end)
     page:Note("Shows the quest, gossip and greeting windows as a floating parchment: Blizzard's own quest parchment with its torn edges and a soft shadow, the NPC's 3D portrait with the text beside it, native quest icons, a reward grid and tan buttons. Quest text appears instantly. The window still moves and resizes as set on the XpieHUD page, and the number keys keep working.")
