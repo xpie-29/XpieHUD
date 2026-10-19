@@ -249,6 +249,8 @@ end
 
 local function Fill(list, data, c)
     local fonts = R.fonts
+    local lightText, lightTitle = R.LightTextColors()
+    local INK, HEADER_INK = lightText or INK, lightTitle or HEADER_INK
     local h = c.h
     local width = list.sf:GetWidth()
     local rowMin, gap, icon, badge = h * ROW_MIN, h * ROW_GAP, h * ICON, h * BADGE

@@ -114,7 +114,7 @@ capture stays out of combat as today.
 4. Quest detail / progress / reward re-dress (done, 3.11.0): title, tag line, wrap, seal,
    reward grid, scroll bar.
 5. Portrait model + item fallback (done, 3.11.0).
-6. All theme masks via the build script; accessibility (Quest Text Contrast)
+6. All theme masks via the build script (done, 3.12.0); accessibility (Quest Text Contrast)
    uses Blizzard's contrast parchments and light text.
 7. Version bump, README, screenshots from you to tune.
 

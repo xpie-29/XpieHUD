@@ -30,7 +30,7 @@ local ART_W, ART_H = 299, 407
 local SHADOW_PAD = 12
 local SHADOW_RGB = { 25 / 255, 25 / 255, 25 / 255 }     -- #191919
 local MASK_DIR = "Interface\\AddOns\\XpieHUD_Parchment\\Media\\masks\\"
-local MASKED = { ["questbg-parchment"] = true, ["questbg-horde"] = true, ["questbg-alliance"] = true }
+-- module.masks (MaskList.lua, generated with the masks): themes with a mask
 local DEFAULT_ATLAS = "QuestBG-Parchment"
 -- Layout, as shares of the parchment (from the mockups, 600x820).
 local PAD_X = 44 / 600                    -- text inset from the left/right edges
@@ -148,12 +148,32 @@ local function CreateLayers(frame, state)
 end
 
 local function ThemeAtlas(frame)
-    if frame == QuestFrame and (QuestFrameDetailPanel:IsShown() or QuestFrameProgressPanel:IsShown() or QuestFrameRewardPanel:IsShown()) then
+    if frame == QuestFrame and not R.ContrastOn() and (QuestFrameDetailPanel:IsShown() or QuestFrameProgressPanel:IsShown() or QuestFrameRewardPanel:IsShown()) then
         local questID = GetQuestID and GetQuestID()
         local theme = questID and questID > 0 and C_QuestLog.GetQuestDetailsTheme and C_QuestLog.GetQuestDetailsTheme(questID)
         if theme and theme.background then return theme.background end
     end
+    return R.DefaultAtlas()
+end
+
+-- Quest Text Contrast (Accessibility): Blizzard's contrast parchment replaces
+-- every theme, and its darkest level uses light "Stone" text.
+function R.DefaultAtlas()
+    if QuestTextContrast and QuestTextContrast.GetDefaultBackgroundAtlas then
+        return QuestTextContrast.GetDefaultBackgroundAtlas() or DEFAULT_ATLAS
+    end
     return DEFAULT_ATLAS
+end
+
+function R.ContrastOn()
+    return QuestTextContrast and QuestTextContrast.IsEnabled and QuestTextContrast.IsEnabled() or false
+end
+
+-- text, title colours ({ r, g, b }) for light text, or nil for the usual inks
+function R.LightTextColors()
+    if QuestTextContrast and QuestTextContrast.UseLightText and QuestTextContrast.UseLightText() and GetMaterialTextColors then
+        return GetMaterialTextColors("Stone")
+    end
 end
 
 local function TitleText(frame)
@@ -260,7 +280,9 @@ local function Skin(button, state, height, key)
     skin.down = false
     skin.key = key
     skin.hint:SetFontObject(fonts.hint)
-    skin.hint:SetTextColor(HINT_COLOR[1], HINT_COLOR[2], HINT_COLOR[3], HINT_COLOR[4])
+    local light = R.LightTextColors()
+    local hint = light or HINT_COLOR
+    skin.hint:SetTextColor(hint[1], hint[2], hint[3], HINT_COLOR[4])
     skin.hint:SetText(key or "")
     SkinState(button)
     UpdateHint(button)
@@ -320,11 +342,13 @@ local function Layout(frame, state)
     frame:SetClampedToScreen(true)
     UpdateFonts(h)
     state.title:SetFontObject(fonts.title)
-    state.title:SetTextColor(TITLE_COLOR[1], TITLE_COLOR[2], TITLE_COLOR[3])
+    local lightText, lightTitle = R.LightTextColors()
+    local titleColor = lightTitle or TITLE_COLOR
+    state.title:SetTextColor(titleColor[1], titleColor[2], titleColor[3])
 
     local atlas = ThemeAtlas(frame)
     local key = atlas:lower()
-    local maskKey = MASKED[key] and key or DEFAULT_ATLAS:lower()
+    local maskKey = (module.masks or {})[key] and key or DEFAULT_ATLAS:lower()
     state.art:SetAtlas(atlas)
     state.artMask:SetTexture(MASK_DIR .. maskKey .. "_mask.tga", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
     state.shadowMask:SetTexture(MASK_DIR .. maskKey .. "_shadow.tga", "CLAMPTOBLACKADDITIVE", "CLAMPTOBLACKADDITIVE")
@@ -343,7 +367,8 @@ local function Layout(frame, state)
     -- tag line: quest classification + Warband Completed (Quest.lua)
     local tagText = R.TagText and R:TagText(frame)
     state.tag:SetFontObject(fonts.tag)
-    state.tag:SetTextColor(TAG_COLOR[1], TAG_COLOR[2], TAG_COLOR[3])
+    local tagColor = lightText or TAG_COLOR
+    state.tag:SetTextColor(tagColor[1], tagColor[2], tagColor[3])
     state.tag:ClearAllPoints()
     state.tag:SetPoint("TOP", state.title, "BOTTOM", 0, -h * 6 / 820)
     state.tag:SetText(tagText or "")
@@ -422,6 +447,14 @@ local function HookBlizzard()
     if GossipFrame and GossipFrame.Update then hooksecurefunc(GossipFrame, "Update", function() Refresh(GossipFrame) end) end
     if QuestFrameGreetingPanel_OnShow then hooksecurefunc("QuestFrameGreetingPanel_OnShow", function() Refresh(QuestFrame) end) end
     if R.HookQuestInfo then R:HookQuestInfo() end
+    -- Quest Text Contrast changed with a window open: re-dress it
+    local watcher = CreateFrame("Frame")
+    watcher:RegisterEvent("CVAR_UPDATE")
+    watcher:SetScript("OnEvent", function(_, _, cvar)
+        if cvar == "QuestTextContrast" or cvar == "questTextContrast" then
+            for _, frame in ipairs(Frames()) do Refresh(frame) end
+        end
+    end)
 end
 
 -- ---------------------------------------------------------------------------
