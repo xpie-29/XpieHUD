@@ -3,7 +3,8 @@
 -- /xpt horde      Horde campaign parchment     /xpt plain   plain parchment
 -- /xpt unit X     portrait unit: target (default), npc, player, mouseover
 -- /xpt anim N     play model animation N (60 = talk, 0 = stand)
--- /xpt zoom N     portrait zoom 0..1 (default 1 = head and shoulders)
+-- /xpt zoom N     portrait zoom 0..1 (default 0.8; 1 = head only)
+-- /xpt light N    button lightening 0..0.6 (default 0.2; 0 = phase-0 shade)
 --
 -- What to check (screenshot each):
 --   1. Main parchment: torn top/right/bottom edges float, no grey block, and
@@ -31,7 +32,9 @@ local SHADOW = { 25 / 255, 25 / 255, 25 / 255, 0.70 }
 
 local theme = "plain"
 local frame, parchment, shadow, strip = nil, nil, nil, {}
-local model, unit, zoom = nil, "target", 1
+local model, unit, zoom = nil, "target", 0.8   -- 0.8: more of the model in the ring
+local LIFT = 0.2                        -- button lightening (two shades)
+local liftTextures = {}
 
 local function Label(parent, text, point, rel, relPoint, x, y, font)
     local fs = parent:CreateFontString(nil, "OVERLAY", font or "GameFontHighlightSmall")
@@ -83,14 +86,23 @@ local function TanButton(parent, text, width)
     local L = b:CreateTexture(nil, "BACKGROUND"); L:SetPoint("LEFT"); L:SetSize(114 * k, 30)
     local R = b:CreateTexture(nil, "BACKGROUND"); R:SetPoint("RIGHT"); R:SetSize(292 * k, 30)
     local M = b:CreateTexture(nil, "BACKGROUND"); M:SetPoint("TOPLEFT", L, "TOPRIGHT"); M:SetPoint("BOTTOMRIGHT", R, "BOTTOMLEFT")
+    -- Lift: the same art again on top, ADD-blended at LIFT alpha (lightens a
+    -- shade per ~0.1, which vertex colour alone can't do). /xpt light N
+    local lift = {}
+    for i, base in ipairs({ L, M, R }) do
+        local t = b:CreateTexture(nil, "BORDER"); t:SetAllPoints(base); t:SetBlendMode("ADD")
+        lift[i] = t; liftTextures[#liftTextures + 1] = t
+    end
     local function Art(suffix)
-        L:SetAtlas("128-GoldRedButton-left" .. suffix)
-        M:SetAtlas("_128-GoldRedButton-center" .. suffix)
-        R:SetAtlas("128-GoldRedButton-right" .. suffix)
-        for _, t in ipairs({ L, M, R }) do
+        for i, t in ipairs({ L, M, R, lift[1], lift[2], lift[3] }) do
+            local piece = (i - 1) % 3
+            t:SetAtlas(piece == 0 and "128-GoldRedButton-left" .. suffix
+                or piece == 1 and "_128-GoldRedButton-center" .. suffix
+                or "128-GoldRedButton-right" .. suffix)
             t:SetDesaturated(true)
             t:SetVertexColor(TAN[1], TAN[2], TAN[3])
         end
+        for _, t in ipairs(lift) do t:SetAlpha(LIFT) end
     end
     Art("")
     local hl = b:CreateTexture(nil, "HIGHLIGHT")
@@ -225,6 +237,7 @@ SlashCmdList.XPIEHUDPARCHMENTTEST = function(msg)
     elseif THEMES[cmd] then theme = cmd; ApplyTheme(); frame:Show()
     elseif cmd == "unit" then unit = arg ~= "" and arg or "target"; RefreshModel()
     elseif cmd == "anim" then model:SetAnimation(tonumber(arg) or 60)
-    elseif cmd == "zoom" then zoom = tonumber(arg) or 1; RefreshModel()
-    else print("/xpt [plain|horde|unit X|anim N|zoom N]") end
+    elseif cmd == "zoom" then zoom = tonumber(arg) or 0.8; RefreshModel()
+    elseif cmd == "light" then LIFT = tonumber(arg) or 0.2; for _, t in ipairs(liftTextures) do t:SetAlpha(LIFT) end; print("XpieHUD Parchment Test: button lift " .. LIFT)
+    else print("/xpt [plain|horde|unit X|anim N|zoom N|light N]") end
 end
