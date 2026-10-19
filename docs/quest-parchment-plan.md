@@ -108,7 +108,7 @@ capture stays out of combat as today.
    scroll bar, arrows, tan buttons.
 1. Module shell (done, 3.10.0): addon folder, RegisterModule, settings page (Style, Shadow
    opacity, Portrait zoom), incompatibility check, Core hand-off hook.
-2. Parchment frame: masks + shadow for plain/Horde/Alliance first, theme
+2. Parchment frame (done, 3.10.1): masks + shadow for plain/Horde/Alliance first, theme
    switching, chrome by alpha, fixed size, pinned buttons.
 3. Gossip + greeting lists (own rendering), badges, keys past 9.
 4. Quest detail / progress / reward re-dress: title, tag line, wrap, seal,

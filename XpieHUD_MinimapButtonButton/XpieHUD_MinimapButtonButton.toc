@@ -2,7 +2,7 @@
 ## Title: XpieHUD - MinimapButtonButton
 ## Notes: XpieHUD extension: MinimapButtonButton's button and drawer as native micro menu buttons beside the micro menu, and the queue status eye off the micro menu.
 ## Author: Jeremy / Xpie
-## Version: 3.10.0
+## Version: 3.10.1
 ## Dependencies: XpieHUD_Core
 ## OptionalDeps: MinimapButtonButton
 ## Group: XpieHUD_Core

@@ -11,9 +11,11 @@
 -- complete flows rely on that); the module only re-dresses them, and hands
 -- number keys, Space and badges back to Core through XpieHUD:SetQuestLook().
 --
--- Phase 1 (this file): module shell, settings, incompatibility check, Core
--- hand-off. Nothing is restyled yet: IsActive() stays false until the
--- renderer (phase 2) exists, so Core behaves exactly as without the module.
+-- This file: module shell, settings, incompatibility check, Core hand-off.
+-- Frame.lua is the renderer (module.renderer); IsActive() is false without
+-- it, so Core behaves exactly as without the module. Phase 2 renders the
+-- parchment frame; the renderer answers nil to keys and badges until the
+-- lists are its own (phases 3-4), so Core keeps handling those.
 
 local core = XpieHUD
 
