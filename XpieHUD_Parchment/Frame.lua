@@ -21,6 +21,9 @@ local module = core:GetModule("parchment")
 
 -- Size: the mockups' parchment was 820px tall on a 1125px screen.
 local SCREEN_HEIGHT_SHARE = 820 / 1125
+-- ...but never taller than this share of the screen once Core's Size slider
+-- has scaled it, so it always fits (it is also clamped to the screen).
+local MAX_SCREEN_SHARE = 0.92
 local ASPECT = 600 / 820                  -- width / height
 -- Blizzard's QuestBG art and the padding baked into our shadow TGAs (art px).
 local ART_W, ART_H = 299, 407
@@ -48,14 +51,16 @@ R.dressed = dressed
 -- Fonts scale with the parchment: the mockups' sizes on an 820px parchment.
 -- Title / header in the quest title font, text in the quest font, badges and
 -- key hints in the standard UI font.
-local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 13, hint = 11 }
+local FONT_SIZES = { title = 27, body = 19, header = 21, badge = 14, badge2 = 12, hint = 11 }
 local fonts = {}
 R.fonts = fonts
 
 local function UpdateFonts(h)
     local files = {
         title = (QuestTitleFont:GetFont()), header = (QuestTitleFont:GetFont()),
-        body = (QuestFont:GetFont()), badge = (GameFontNormal:GetFont()), hint = (GameFontNormal:GetFont()),
+        body = (QuestFont:GetFont()), hint = (GameFontNormal:GetFont()),
+        -- badges: Blizzard's number font (narrow digits, so 10-19 fit the circle)
+        badge = (NumberFontNormal:GetFont()), badge2 = (NumberFontNormal:GetFont()),
     }
     for key, size in pairs(FONT_SIZES) do
         fonts[key] = fonts[key] or CreateFont("XpieHUDParchmentFont_" .. key)
@@ -295,9 +300,13 @@ end
 -- Dress / undress
 -- ---------------------------------------------------------------------------
 local function Layout(frame, state)
-    local h = UIParent:GetHeight() * SCREEN_HEIGHT_SHARE
+    local screenH = UIParent:GetHeight()
+    local scale = frame:GetEffectiveScale() / UIParent:GetEffectiveScale()   -- Core's Size slider
+    local h = math.min(screenH * SCREEN_HEIGHT_SHARE, screenH * MAX_SCREEN_SHARE / scale)
     local w = h * ASPECT
     frame:SetSize(w, h)
+    if state.clamped == nil then state.clamped = frame:IsClampedToScreen() end
+    frame:SetClampedToScreen(true)
     UpdateFonts(h)
     state.title:SetFontObject(fonts.title)
     state.title:SetTextColor(TITLE_COLOR[1], TITLE_COLOR[2], TITLE_COLOR[3])
@@ -359,6 +368,7 @@ local function Undress(frame)
     for _, region in ipairs({ state.shadow, state.art, state.title }) do region:Hide() end
     if R.UndressLists then R:UndressLists(frame, state) end
     frame:SetSize(state.size[1], state.size[2])
+    if state.clamped ~= nil then frame:SetClampedToScreen(state.clamped); state.clamped = nil end
     state.on = false
 end
 

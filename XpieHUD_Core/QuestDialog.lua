@@ -164,7 +164,10 @@ local hideGroups = {
         return list
     end },
     { key = "questHideMinimap", frames = function()
-        return Collect({}, MinimapCluster)
+        -- MinimapButtonButton's button belongs with the minimap even where
+        -- XpieHUD_MinimapButtonButton puts it on the micro menu; its drawer
+        -- is its child, so it fades too.
+        return Collect({}, MinimapCluster, _G.MinimapButtonButtonButton)
     end },
     -- "Guide Addons": frames offered by installed modules (Zygor's viewer and
     -- arrow, ...). Key kept as questHideRXP (its pre-2.0 name) so the saved

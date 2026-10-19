@@ -22,7 +22,7 @@ local R = module.renderer
 local ROW_MIN   = 30 / 820     -- row height (rows grow for wrapped text)
 local ROW_GAP   = 10 / 820
 local ICON      = 22 / 820
-local BADGE     = 20 / 820
+local BADGE     = 22 / 820
 local BADGE_GAP = 8 / 820
 local TEXT_GAP  = 8 / 820
 local SECTION_GAP = 14 / 820   -- above a header / between the greeting and the list
@@ -205,7 +205,7 @@ local function Badge(row)
     fillMask:SetAllPoints(fill)
     fill:AddMaskTexture(fillMask)
     b.text = b:CreateFontString(nil, "OVERLAY")
-    b.text:SetPoint("CENTER", 0, 0.5)
+    b.text:SetPoint("CENTER", 0, 0)
     return b
 end
 
@@ -316,7 +316,7 @@ local function Fill(list, data, c)
             row.badge:SetSize(badge, badge)
             row.badge:ClearAllPoints()
             row.badge:SetPoint("LEFT", row, "LEFT", 0, 0)
-            row.badge.text:SetFontObject(fonts.badge)
+            row.badge.text:SetFontObject((entry.index or 0) >= 10 and fonts.badge2 or fonts.badge)
             row.badge.text:SetTextColor(1, 0.82, 0)
             row.badge.text:SetText(entry.index or "")
             row.badge:SetShown(R.listBadgesOn and entry.index and entry.index <= MAX_CHOICES or false)
