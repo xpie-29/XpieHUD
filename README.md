@@ -39,7 +39,7 @@ Quality-of-life for Blizzard's native quest, gossip and book/plaque windows. The
 - **Hide UI While Talking**: fades action bars, unit frames (including the Personal Resource Display), the objective tracker, chat, the minimap, guide addons and buffs (each can be toggled) while a window is open. Everything comes back on close, or immediately if combat starts.
   - Frames from other addons can be added by name: run `/xhud questscan`, talk to an NPC, and close the window to read what's still visible, then `/xhud questhide <FrameName>`.
 - **Tooltips at Cursor**: while talking, tooltips that normally sit in the screen corner appear at the mouse (can be turned off).
-- **Trainer where you were looking**: a trainer window opened from a gossip option opens with its top-left corner where the dialog's was, instead of jumping to Blizzard's spot.
+- **Windows open where you were looking**: a trainer, merchant, bank, tabard, guild registrar, guild charter or item upgrade window opened from a gossip option opens with its top-left corner where the dialog's was, instead of jumping to Blizzard's spot.
 - **Position and Size**: drag a window's title bar to move it. A size slider (50–150%) sits in settings. Both are saved and re-applied every time the window opens.
 - **Keyboard Shortcuts** (out of combat):
   - **1–9** pick gossip options, quests in an NPC's list, and reward choices; **0** picks the 10th and **Shift+1–9** the 11th to 19th (city guards list about 17). A number key that picks nothing passes through, so Shift+number still pages the action bar.
@@ -139,6 +139,7 @@ An optional look for the quest, gossip and greeting windows: Blizzard's own ques
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.13.1**: Core: merchant, bank, tabard, guild registrar, guild charter and item upgrade windows opened from a gossip option also open at the dialog's top-left corner, like the trainer.
 - **3.13.0**: Quest Parchment: new Style **Parchment in Blizzard's frame** (all the parchment layout inside Blizzard's own border, portrait, title bar and close button; the parchment unmasked like stock, no shadow). Core: a trainer opened from a gossip option opens at the dialog's top-left corner.
 - **3.12.5**: Tooltips at Cursor While Talking: the tooltip of the NPC you clicked moves to the cursor as soon as the dialog opens, instead of staying in the corner over the window until it fades.
 - **3.12.4**: Quest Parchment: the top divider sits 1px lower, closer to the text.

@@ -26,9 +26,15 @@ local QUEST_BADGE_Y  = -1
 local MIN_SCALE, MAX_SCALE = 50, 150
 local MAX_CHOICES    = 19    -- 1-9, 0 = 10, Shift+1..9 = 11-19
 -- Windows a gossip option opens in place of the dialog: they open with
--- their top-left corner where the dialog's was. (Blizzard_TrainerUI, load
--- on demand: UIPanelWindows["ClassTrainerFrame"] = { area = "left", pushable = 0 })
-local FOLLOW_FRAMES  = { "ClassTrainerFrame" }
+-- their top-left corner where the dialog's was. All "left" area panels of
+-- a dialog's size (UIPanelWindows, 12.1.5); ClassTrainerFrame
+-- (Blizzard_TrainerUI) and ItemUpgradeFrame (Blizzard_ItemUpgradeUI) load
+-- on demand. Not the big ones (stable, transmog, auction house, guild
+-- bank: they could run off the screen) or the centred flight map.
+local FOLLOW_FRAMES  = {
+    "ClassTrainerFrame", "MerchantFrame", "BankFrame", "TabardFrame",
+    "GuildRegistrarFrame", "PetitionFrame", "ItemUpgradeFrame",
+}
 local FOLLOW_WINDOW  = 2     -- seconds after a dialog closes that a window still follows it
 
 local dialogFrames = {}
