@@ -39,7 +39,8 @@ local TITLE_COLOR = { 0.12, 0.06, 0.02 }
 local TAG_COLOR = { 0.29, 0.13, 0.03 }
 local BUTTON_W, BUTTON_WIDE, BUTTON_H = 170 / 600, 220 / 600, 30 / 820
 local BUTTON_BOTTOM = 58 / 820            -- button bottom above the parchment's bottom
-local CONTENT_GAP = 18 / 820              -- between the title / buttons and the content
+local CONTENT_GAP = 18 / 820              -- between the title and the content
+local CONTENT_GAP_BOTTOM = 40 / 820       -- between the content and the buttons (room for the "more below" arrow)
 -- Buttons: 128-GoldRedButton, desaturated + tan, plus an ADD copy at LIFT.
 local TAN = { 1.00, 0.82, 0.58 }
 local LIFT = 0.20
@@ -398,7 +399,7 @@ local function Layout(frame, state)
     -- content area: under the title, above the pinned buttons
     local top = h * TITLE_TOP + math.max(state.title:GetStringHeight() or 0, h * 27 / 820) + h * CONTENT_GAP
     if state.tag:IsShown() then top = top + h * 6 / 820 + (state.tag:GetStringHeight() or 0) end
-    local bottom = h * (BUTTON_BOTTOM + BUTTON_H) + h * CONTENT_GAP
+    local bottom = h * (BUTTON_BOTTOM + BUTTON_H + CONTENT_GAP_BOTTOM)
     state.content = { left = pad, right = pad, top = top, bottom = bottom, w = w, h = h }
     if R.LayoutLists then R:LayoutLists(frame, state) end
     if R.LayoutQuestPage then R:LayoutQuestPage(frame, state) end

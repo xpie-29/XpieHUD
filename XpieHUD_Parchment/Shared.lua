@@ -197,14 +197,22 @@ end
 -- "More below" (the chat frame's ScrollToBottomButton: art + ADD flash),
 -- shown while a scroll frame isn't at its bottom. Returns an update function.
 -- ---------------------------------------------------------------------------
--- A native divider (the quest greeting's UI-HorizontalBreak) along the top
--- of a scroll area, shown once the text has been scrolled, so cut-off text
--- does not end in a hard edge. Returns the texture (its .Update refreshes).
-R.RULE_HEIGHT = 14
+-- A thin ink line along the top of a scroll area, fading out at both ends,
+-- shown once the text has been scrolled so cut-off text does not end in a
+-- hard edge. Returns a frame (its .Update refreshes).
+R.RULE_HEIGHT = 2
+local RULE_COLOR = { 0.30, 0.19, 0.08, 0.55 }   -- the parchment's brown ink
 function R.AttachTopRule(sf, parent)
-    local rule = parent:CreateTexture(nil, "OVERLAY")
-    rule:SetTexture("Interface\\QuestFrame\\UI-HorizontalBreak")
-    rule:SetTexCoord(0, 1, 0.25, 0.75)
+    local rule = CreateFrame("Frame", nil, parent)
+    local r, g, b, a = unpack(RULE_COLOR)
+    local left = rule:CreateTexture(nil, "OVERLAY")
+    local right = rule:CreateTexture(nil, "OVERLAY")
+    left:SetPoint("TOPLEFT"); left:SetPoint("BOTTOMRIGHT", rule, "BOTTOM")
+    right:SetPoint("TOPLEFT", rule, "TOP"); right:SetPoint("BOTTOMRIGHT")
+    for _, t in ipairs({ left, right }) do t:SetColorTexture(1, 1, 1, 1) end
+    left:SetGradient("HORIZONTAL", CreateColor(r, g, b, 0), CreateColor(r, g, b, a))
+    right:SetGradient("HORIZONTAL", CreateColor(r, g, b, a), CreateColor(r, g, b, 0))
+    rule:Hide()
     local function Update()
         rule:SetShown(rule.enabled ~= false and sf:IsVisible() and sf:GetVerticalScroll() > 1)
     end
