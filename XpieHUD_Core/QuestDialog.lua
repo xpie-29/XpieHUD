@@ -649,6 +649,18 @@ local function UpdateState()
     end
 end
 
+-- The tooltip of the NPC you just clicked was placed before the dialog
+-- opened: move it to the cursor now (SetAnchorType keeps its text), like
+-- the tooltips that follow (see GameTooltip_SetDefaultAnchor below).
+local function MoveOpenTooltip()
+    local tip = GameTooltip
+    if not (XpieHUDDB.questTooltipCursor and IsEnabled()) then return end
+    if not (tip and tip:IsShown() and tip.SetAnchorType) or tip:IsForbidden() then return end
+    if tip:GetOwner() ~= UIParent or tip:GetAnchorType() ~= "ANCHOR_NONE" then return end
+    tip:ClearAllPoints()
+    tip:SetAnchorType("ANCHOR_CURSOR")
+end
+
 local function OnDialogShow(frame)
     restoreToken = restoreToken + 1
     ApplyScale(frame)
@@ -656,6 +668,7 @@ local function OnDialogShow(frame)
     local look = Look()
     if look and look.OnDialogShow then look:OnDialogShow(frame) end
     UpdateState()
+    MoveOpenTooltip()
     RefreshBadges()
     if addon.questScanArmed then
         addon.questScanArmed = nil

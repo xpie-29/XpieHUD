@@ -138,6 +138,7 @@ An optional look for the quest, gossip and greeting windows: Blizzard's own ques
 - Upgrading from 1.x: settings for removed features are cleaned out of `XpieHUDDB` automatically. RestedXP's own Active Targets / Active Items options may still be switched off from when XpieHUD managed them; turn them back on in RestedXP if you use it again.
 
 ## Version History
+- **3.12.5**: Tooltips at Cursor While Talking: the tooltip of the NPC you clicked moves to the cursor as soon as the dialog opens, instead of staying in the corner over the window until it fades.
 - **3.12.4**: Quest Parchment: the top divider sits 1px lower, closer to the text.
 - **3.12.3**: Quest Parchment: money reward coins no taller than the reward text beside them; the scroll bars (Blizzard's on the quest pages, ours on gossip lists) and the "more below" arrow tinted tan and brown instead of silver.
 - **3.12.2**: Quest Parchment: more room between the scroll area and the buttons, so the "more below" arrow no longer crowds Decline; the stretched top divider is now a thin ink line that fades out at both ends.
