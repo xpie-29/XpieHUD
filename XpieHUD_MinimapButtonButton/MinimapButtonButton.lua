@@ -3,7 +3,8 @@
 -- (default):
 --   * MBB's main button is a native micro menu button (32x40, the micro
 --     menu's button background, pushed background while pressed or while the
---     drawer is open, a hover glow, MBB's logo in micro menu gold) sitting
+--     drawer is open, and a chest icon drawn in the micro menu's style with
+--     its Up / Mouseover / Down states in place of MBB's logo) sitting
 --     directly left of the micro menu at the micro menu's own scale
 --     (Attach to Micro Menu; it can't be dragged while attached)
 --   * the drawer loses its tooltip box; each addon button in it gets the
@@ -47,16 +48,18 @@ local MICRO_W, MICRO_H  = 32, 40
 local MICRO_OVERLAP     = 5
 local ATLAS_BG          = "UI-HUD-MicroMenu-ButtonBG-Up"
 local ATLAS_BG_PUSHED   = "UI-HUD-MicroMenu-ButtonBG-Down"
--- Hover: the micro buttons swap to their own "-Mouseover" icon art, which
--- MBB's logo and addon icons don't have, so the background is added over
--- itself instead (a soft brightening of the same art).
+-- Drawer hover: micro buttons swap to their own "-Mouseover" icon art, which
+-- addon icons don't have, so the background is added over itself instead
+-- (a soft brightening of the same art).
 local HOVER_ALPHA       = 0.35
--- MBB's logo on the main button (MBB draws it 16px, black or class coloured).
-local LOGO_SIZE         = 18
-local LOGO_COLOR        = { 0.96, 0.82, 0.48 }   -- micro menu icon gold
-local LOGO_HOVER_COLOR  = { 1, 0.93, 0.70 }
--- Pushed (pressed or drawer open): the logo moves like a pressed icon.
-local PUSHED_OFFSET_X, PUSHED_OFFSET_Y = 1, -1
+-- Main button icon: a chest drawn in the micro menu's style, replacing MBB's
+-- logo (Media/icon.tga, made by Media/src/icon.lua). Four 64x82 cells, as in
+-- Blizzard's 2x micro menu sheet, shown at the atlas's 32x41.
+local ICON_TEXTURE      = "Interface\\AddOns\\XpieHUD_MinimapButtonButton\\Media\\icon"
+local ICON_CELLS        = { up = 0, mouseover = 1, down = 2, disabled = 3 }
+local ICON_CELL_W, ICON_CELL_H = 64 / 256, 82 / 128
+local ICON_W, ICON_H    = 32, 41
+local ICON_PUSHED_HOVER_ALPHA = 0.5   -- MainMenuBarMicroButtonMixin:SetPushed
 -- Addon icons in the drawer (LibDBIcon draws them 18px).
 local DRAWER_ICON_SIZE  = 20
 local TOOLTIP_TITLE     = "Minimap Buttons"
@@ -209,28 +212,25 @@ local function PlaceMain()
     guard = false
 end
 
+local function SetIconCell(texture, state)
+    local i = ICON_CELLS[state]
+    texture:SetTexCoord(i * ICON_CELL_W, (i + 1) * ICON_CELL_W, 0, ICON_CELL_H)
+end
+
+-- As MainMenuBarMicroButtonMixin: Up art; Mouseover art on hover; Down art
+-- (and the pushed background) while pressed or while the drawer is open,
+-- with the Down art added again at 50% when hovering a pushed button.
 local function UpdateMain()
     if not mbb.art then return end
     local on = Styled()
     local pushed = mbb.down or (mbb.container ~= nil and mbb.container:IsShown())
-    ShowArt(mbb.art, on, mbb.hover, pushed)
-    local logo = mbb.logo
-    if on and logo then
-        local color = mbb.hover and LOGO_HOVER_COLOR or LOGO_COLOR
-        logo:SetVertexColor(color[1], color[2], color[3], 1)
-        logo:SetSize(LOGO_SIZE, LOGO_SIZE)
-        logo:ClearAllPoints()
-        logo:SetPoint("CENTER", mbb.main, "CENTER", pushed and PUSHED_OFFSET_X or 0, pushed and PUSHED_OFFSET_Y or 0)
+    ShowArt(mbb.art, on, false, pushed)
+    mbb.icon:SetShown(on)
+    mbb.iconHighlight:SetShown(on and pushed and mbb.hover)
+    if on then
+        SetIconCell(mbb.icon, pushed and "down" or (mbb.hover and "mouseover" or "up"))
     end
-end
-
-local function RestoreLogo()
-    local logo = mbb.logo
-    if not (logo and mbb.logoColor) then return end
-    logo:SetVertexColor(unpack(mbb.logoColor))
-    logo:SetSize(mbb.logoSize[1], mbb.logoSize[2])
-    logo:ClearAllPoints()
-    logo:SetPoint("CENTER", mbb.main, "CENTER", 0, 0)
+    if mbb.logo then mbb.logo:SetAlpha(on and 0 or 1) end
 end
 
 -- Drawer. MBB anchors it to the main button and centres each collected button
@@ -447,6 +447,20 @@ local function InstallMBB()
     mbb.mbbSize = { main:GetSize() }
     mbb.mbbScale = main:GetScale()
     mbb.art = CreateMicroArt(main)
+    -- Above MBB's logo (ARTWORK 0), which is faded out while styled.
+    mbb.icon = main:CreateTexture(nil, "ARTWORK", nil, 1)
+    mbb.icon:SetTexture(ICON_TEXTURE)
+    mbb.icon:SetSize(ICON_W, ICON_H)
+    mbb.icon:SetPoint("CENTER")
+    mbb.icon:Hide()
+    mbb.iconHighlight = main:CreateTexture(nil, "ARTWORK", nil, 2)
+    mbb.iconHighlight:SetTexture(ICON_TEXTURE)
+    mbb.iconHighlight:SetSize(ICON_W, ICON_H)
+    mbb.iconHighlight:SetPoint("CENTER")
+    mbb.iconHighlight:SetBlendMode("ADD")
+    mbb.iconHighlight:SetAlpha(ICON_PUSHED_HOVER_ALPHA)
+    SetIconCell(mbb.iconHighlight, "down")
+    mbb.iconHighlight:Hide()
 
     hooksecurefunc(main, "SetPoint", function(_, ...)
         if guard then return end
@@ -511,16 +525,11 @@ local function ApplyMBB()
     if not InstallMBB() then return end
     local on = Styled()
     if on and not mbb.on then
-        if mbb.logo then
-            mbb.logoColor = { mbb.logo:GetVertexColor() }
-            mbb.logoSize = { mbb.logo:GetSize() }
-        end
         StripBackdrop(mbb.main)
         StripBackdrop(mbb.container)
     elseif not on and mbb.on then
         RestoreBackdrop(mbb.main)
         RestoreBackdrop(mbb.container)
-        RestoreLogo()
     end
     mbb.on = on
     PlaceMain()
